@@ -1,0 +1,114 @@
+{
+# Data sources currently supported:
+# - MERRA-2
+data_source: MERRA-2
+
+# Northern or Southern hemisphere (cutoff at 10N or -10S)
+# Options:
+# - N
+# - S
+hemisphere: N
+
+# Begin time (format: YYYYMMDDHH)
+begin_time: 2021010100
+
+# End time (format: YYYYMMDDHH)
+end_time: 2021123121
+
+# Temporal resolution (hours)
+timestep_hrs: 3
+
+# Minimum latitude (degrees) of domain over which ARs will be identified
+# - Northern Hemisphere: must be 10N or higher
+min_lat: 10
+
+# Maximum latitude (degrees) of domain over which ARs will be identified
+# - Southern Hemisphere: must be -10S or lower
+max_lat: 90
+
+# Minimum longitude (degrees) of domain over which ARs will be identified
+# Format: -180 to 180 degrees
+min_lon: -180
+
+# Maximum longitude (degrees) of domain over which ARs will be identified
+# Format: -180 to 180 degrees
+max_lon: 180
+
+# Longitude spacing (degrees) of data source's native grid (assumes regular grid)
+lon_res: 0.625
+
+# Latitude spacing (degrees) of data source's native grid (assumes regular grid)
+lat_res: 0.5
+
+# Pressure levels (hPa) used to calculate IVT
+# ** Comment this line out if pre-calculated IVT and 1000-700 hPa wind will be used for AR identification
+# raw_IVT_calc_plevs: [1000,950,900,850,800,750,700,650,600,550,500,400,300]
+
+# Directory containing u/v-wind and specific humidity files (on pressure levels)
+# ** Comment this line out if pre-calculated IVT and 1000-700 hPa wind will be used for AR identification
+# quv_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_q_u_v/
+
+# Directory containing raw IVT files
+# ** Comment this line out to calculate raw IVT at runtime
+raw_IVT_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_raw_IVT/native_res/
+
+# Directory containing 1000-700 hPa mean wind files
+# ** Comment this line out to calculate 1000-700 hPa mean wind at runtime
+wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_uv_wind_1000-700hPa_mean_native_res/
+
+# Directory containing IVT percentile rank (IVT PR) files
+# ** Comment this line out to calculate IVT PR at runtime
+# ** Note: IVT PR calculation is slow, it is recommended to use pre-calculated data if possible
+IVT_PR_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_IVT_PR/native_res/
+
+# Whether to use 1000-700 hPa mean wind or IVT vector for direction filtering criteria
+# Options:
+# - mean_wind_1000_700_hPa
+# - IVT
+# v1 default value: mean_wind_1000_700_hPa
+direction_type: mean_wind_1000_700_hPa
+
+# Whether to calculate AR center axes or not
+# ** Note: as of 2022-08-26, I can't remember if axis calculation actually works. Need to investigate this further.
+# Options:
+# - True
+# - False
+calc_axis: False
+
+# Minimum raw IVT threshold (kg/m/s) for a feature to potentially be considered an AR
+# v1 default value for Northern Hemisphere: 150 kg/m/s
+raw_IVT_thresh: 150
+
+# Minimum IVT percentile rank threshold for a feature to potentially be considered an AR
+# v1 default value for Northern Hemisphere: 85
+IVT_PR_thresh: 85
+
+# Minimum number of grid points for filtering of potential AR objects
+# v1 default value (tuned to 0.5 degree lat/lon grid): 150
+min_num_grid_pts: 150
+
+# Minimum object length (km) to be considered an AR
+# v1 default value: 1500
+min_length: 1500
+
+# Minimum length / width ratio to be considered an AR
+min_length_width_ratio: 1.5
+
+# Latitude (degrees), poleward of which the v-wind direction threshold is relaxed
+# v1 default value for Northern Hemisphere: 70. This means that features poleward of 70N are not required to have v-wind directed poleward, in order to capture Arctic ARs that may transport moisture in an equatorward direction.
+# Set this value to 90 (Northern Hemisphere) or -90 (Southern Hemisphere) to require v-wind to be poleward at *all* latitudes
+vwind_poleward_cutoff_lat: 70
+
+# Minimum v-wind (m/s) required to be considered an AR
+# A threshold of 0 means the direction of transport must be northward (Northern Hemisphere) / southward (Southern Hemisphere)
+# v1 default value for Northern Hemisphere = 0
+vwind_thresh: 0
+
+# Latitude (degrees) equatorward of which the u-wind threshold is used to filter out easterly non-AR subtropical moisture plumes
+# v1 default value for Northern Hemisphere: 35
+trop_subtrop_bound_lat: 35
+
+# Minimum u-wind value (m/s) for objects equatorward of subtropical cutoff latitude
+# v1 default value: 2 
+trop_subtrop_uwind_thresh: 2
+}
