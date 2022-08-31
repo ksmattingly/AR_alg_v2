@@ -18,12 +18,12 @@ min_lat: 10
 max_lat: 90
 
 # Minimum longitude (degrees) of domain over which ARs will be identified
-# Format: -180 to 180 degrees
+# Format: degrees east (possible range of -180 to 180 degrees)
 min_lon: -180
 
 # Maximum longitude (degrees) of domain over which ARs will be identified
-# Format: -180 to 180 degrees
-max_lon: 180
+# Format: degrees east (possible range of -180 to 180 degrees)
+max_lon: 179.375
 
 # Longitude spacing (degrees) of data source's native grid (assumes regular grid)
 lon_res: 0.625
@@ -45,32 +45,29 @@ IVT_data_origin: calculated_during_AR_ID_processing
 # - model_levels
 IVT_vert_coord: model_levels
 
-# Whether to use 1000-700 hPa mean wind or IVT vector for direction filtering criteria
-# Options:
-# - mean_wind_1000_700_hPa
-# - IVT
-# v1 default value: mean_wind_1000_700_hPa
-direction_type: IVT
-
 # Pressure levels (hPa) used to calculate IVT
 # (Ignored if IVT calculated from model level data is used)
 IVT_calc_plevs: [1000,975,950,925,900,875,850,825,800,775,750,725,700,650,600,550,500,450,400,350,300,250,200,150]
 
-# Number of model levels used to calculate IVT
-# (Ignored if IVT calculated from pressure level data is used)
-# ERA5 (pre-calculated) (https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions):
-# num_model_levels: 137
-# MERRA-2 (by default, only use the lowermost 32 (of 72) model levels, extending from the surface to ~150 hPa):
-num_model_levels: 32
+# Model levels (indices) used to calculate IVT
+# (Ignored if IVT calculated from pressure level data, or pre-calculated data derived from model levels [i.e. from ERA5] is used)
+# MERRA-2 (by default, only use the lowermost 32 (of 72) model levels, extending down from ~150 hPa to the surface):
+IVT_calc_mlevs: [41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72]
 
-# Directory containing 3D u/v-wind and specific humidity files
-# For MERRA-2 data, these files also contain DELP (pressure thickness of model levels)
+# Whether to use OPeNDAP to remotely access input files for IVT calculation
+use_opendap: True
+
+# Directory containing 3D u/v-wind and specific humidity files for IVT calculation
+# For MERRA-2 model level data, these files also contain DELP (pressure thickness of model levels)
+# (Ignored if OPeNDAP is used)
 quv_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_quv_delp_NH_3hr_model_levs/
 
 # File name prefix of quv files (used by xarray to read in files as a multi-file dataset)
+# (Ignored if OPeNDAP is used)
 quv_fname_prefix: 'MERRA2_'
 
 # String format of dates in quv file names (must be in python datetime strftime() format)
+# (Used to determine MERRA-2 file name for both locally stored AND remote (OPeNDAP) files)
 quv_fname_date_format: '%Y%m%d'
 
 # Temporal spacing of quv files (must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
@@ -88,6 +85,13 @@ IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_PR_NH_3hr_pres_
 
 # Directory to which output AR data will be written
 AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_pres_levs/
+
+# Whether to use 1000-700 hPa mean wind or IVT vector for direction filtering criteria
+# Options:
+# - mean_wind_1000_700_hPa
+# - IVT
+# v1 default value: mean_wind_1000_700_hPa
+direction_type: IVT
 
 # Whether to calculate AR center axes or not
 # ** Note: as of 2022-08-26, I can't remember if axis calculation actually works. Need to investigate this further.
