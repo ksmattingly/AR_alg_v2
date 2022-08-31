@@ -1,22 +1,13 @@
 {
 # Data sources currently supported:
-# - MERRA-2
-data_source: MERRA-2
+# - MERRA2
+data_source: MERRA2
 
 # Northern or Southern hemisphere (cutoff at 10N or -10S)
 # Options:
 # - N
 # - S
 hemisphere: N
-
-# Begin time (format: YYYYMMDDHH)
-begin_time: 2021010100
-
-# End time (format: YYYYMMDDHH)
-end_time: 2021123121
-
-# Temporal resolution (hours)
-timestep_hrs: 3
 
 # Minimum latitude (degrees) of domain over which ARs will be identified
 # - Northern Hemisphere: must be 10N or higher
@@ -40,33 +31,63 @@ lon_res: 0.625
 # Latitude spacing (degrees) of data source's native grid (assumes regular grid)
 lat_res: 0.5
 
-# Pressure levels (hPa) used to calculate IVT
-# ** Comment this line out if pre-calculated IVT and 1000-700 hPa wind will be used for AR identification
-# raw_IVT_calc_plevs: [1000,950,900,850,800,750,700,650,600,550,500,400,300]
+# Whether IVT was provided from reanalysis / model data set, or calculated by this package
+# Options:
+# - calculated_during_AR_ID_processing
+# - provided_in_original_dataset
+IVT_data_origin: calculated_during_AR_ID_processing
 
-# Directory containing u/v-wind and specific humidity files (on pressure levels)
-# ** Comment this line out if pre-calculated IVT and 1000-700 hPa wind will be used for AR identification
-# quv_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_q_u_v/
-
-# Directory containing raw IVT files
-# ** Comment this line out to calculate raw IVT at runtime
-raw_IVT_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_raw_IVT/native_res/
-
-# Directory containing 1000-700 hPa mean wind files
-# ** Comment this line out to calculate 1000-700 hPa mean wind at runtime
-wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_uv_wind_1000-700hPa_mean_native_res/
-
-# Directory containing IVT percentile rank (IVT PR) files
-# ** Comment this line out to calculate IVT PR at runtime
-# ** Note: IVT PR calculation is slow, it is recommended to use pre-calculated data if possible
-IVT_PR_dir: /run/media/kmattingly/kyle_8tb/diss_data/MERRA2/MERRA2_IVT_PR/native_res/
+# Vertical coordinate system used to calculate IVT (either pressure levels or model levels)
+# - Even if pre-calculated IVT is used for AR identification, leave this variable uncommented,
+#   since it will be included as metadata in AR output files
+# Options:
+# - pressure_levels
+# - model_levels
+IVT_vert_coord: model_levels
 
 # Whether to use 1000-700 hPa mean wind or IVT vector for direction filtering criteria
 # Options:
 # - mean_wind_1000_700_hPa
 # - IVT
 # v1 default value: mean_wind_1000_700_hPa
-direction_type: mean_wind_1000_700_hPa
+direction_type: IVT
+
+# Pressure levels (hPa) used to calculate IVT
+# (Ignored if IVT calculated from model level data is used)
+IVT_calc_plevs: [1000,975,950,925,900,875,850,825,800,775,750,725,700,650,600,550,500,450,400,350,300,250,200,150]
+
+# Number of model levels used to calculate IVT
+# (Ignored if IVT calculated from pressure level data is used)
+# ERA5 (pre-calculated) (https://confluence.ecmwf.int/display/UDOC/L137+model+level+definitions):
+# num_model_levels: 137
+# MERRA-2 (by default, only use the lowermost 32 (of 72) model levels, extending from the surface to ~150 hPa):
+num_model_levels: 32
+
+# Directory containing 3D u/v-wind and specific humidity files
+# For MERRA-2 data, these files also contain DELP (pressure thickness of model levels)
+quv_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_quv_delp_NH_3hr_model_levs/
+
+# File name prefix of quv files (used by xarray to read in files as a multi-file dataset)
+quv_fname_prefix: 'MERRA2_'
+
+# String format of dates in quv file names (must be in python datetime strftime() format)
+quv_fname_date_format: '%Y%m%d'
+
+# Temporal spacing of quv files (must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
+#  See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
+quv_files_timestep: '1D'
+
+# Directory containing IVT files
+IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_NH_3hr_model_levs/
+
+# Directory containing 1000-700 hPa mean wind files (if necessary)
+wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_1000_700_hPa_mean_wind_NH_3hr_pres_levs/
+
+# Directory containing IVT percentile rank (IVT PR) files
+IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_PR_NH_3hr_pres_levs/
+
+# Directory to which output AR data will be written
+AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_pres_levs/
 
 # Whether to calculate AR center axes or not
 # ** Note: as of 2022-08-26, I can't remember if axis calculation actually works. Need to investigate this further.
@@ -75,16 +96,25 @@ direction_type: mean_wind_1000_700_hPa
 # - False
 calc_axis: False
 
-# Minimum raw IVT threshold (kg/m/s) for a feature to potentially be considered an AR
-# v1 default value for Northern Hemisphere: 150 kg/m/s
-raw_IVT_thresh: 150
+# Whether to output information about features that were not classified as ARs
+# Options:
+# - True
+# - False
+# v1 default: True
+non_AR_data_output: False
+
+# Minimum IVT threshold (kg/m/s) for a feature to potentially be considered an AR
+# - v1 default value for Northern Hemisphere: 150 kg/m/s
+# - Value for Antarctic ARs: 50 kg/m/s
+IVT_thresh: 150
 
 # Minimum IVT percentile rank threshold for a feature to potentially be considered an AR
 # v1 default value for Northern Hemisphere: 85
 IVT_PR_thresh: 85
 
 # Minimum number of grid points for filtering of potential AR objects
-# v1 default value (tuned to 0.5 degree lat/lon grid): 150
+# - v1 default value (tuned to 0.5 degree lat/lon grid): 150
+# - Value for Antarctic ARs identified using ERA5 data: 300
 min_num_grid_pts: 150
 
 # Minimum object length (km) to be considered an AR
