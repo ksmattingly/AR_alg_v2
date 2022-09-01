@@ -1,7 +1,5 @@
 import os
 import hjson
-from pydap.client import open_url
-from pydap.cas.urs import setup_session
 import xarray as xr
 import pandas as pd
 import numpy as np
@@ -33,11 +31,15 @@ def calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=Fa
         ll_mean_u_wind = np.empty((len(times), len(lats), len(lons)))
         ll_mean_v_wind = np.empty((len(times), len(lats), len(lons)))
     
+    # Must have opendap configuration set up (.netrc, .urs_cookies, .dodsrc) 
+    # to open earthdata dataset with xarray
+    # - See https://daac.gsfc.nasa.gov/information/howto?title=How%20to%20Access%20MERRA-2%20Data%20using%20OPeNDAP%20with%20Python3%20and%20Calculate%20Daily%2FWeekly%2FMonthly%20Statistics%20from%20Hourly%20Data%20
     if use_opendap:
         i = 0
         for file_t in quv_file_times:
             # ** Assumes we are calculating over the full longitude span for either the NH or SH
-            quv_ds_ts_full = _open_remote_ds(AR_config, netrc_path, file_t)
+            url = _get_MERRA2_opendap_url(AR_config, file_t)
+            quv_ds_ts_full = xr.open_dataset(url)
             # ** Assumes MERRA-2 data is organized into daily files
             times_in_ds = times[times.to_period('1D') == file_t.strftime('%Y%m%d')]
             
@@ -59,19 +61,14 @@ def calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=Fa
                 quv_ds_ts.close()
             quv_ds_ts_full.close()
     else:
-        # Narrow the list of input quv files to only the approximate time span of files
-        # needed to calculate IVT for the time range covered by (begin_t, end_t)
-        # - The purpose of this step is to shorten the list of files read in as a mfdataset
-        #   by xarray, which will hopefully save processing time
-        # - This assumes that input files follow CF conventions and can be read as a mfdataset
         quv_flist = []
         for t in quv_file_times:
             quv_fname = glob.glob(AR_config['quv_dir']+\
                                   AR_config['quv_fname_prefix']+\
                                   '*'+t.strftime(AR_config['quv_fname_date_format'])+'*.nc')[0]
             quv_flist.append(quv_fname)
+    
         quv_ds = xr.open_mfdataset(quv_flist, mask_and_scale=True)
-        
         for i, t in enumerate(times):
             # ** Assumes we are calculating over the full longitude span for either the NH or SH
             if calc_ll_mean_wind:
@@ -127,40 +124,38 @@ def _IVT_ll_mean_wind_calc_pres_levs(quv_ds_ts):
     
     return uIVT_ts, vIVT_ts, IVT_ts, ll_mean_u_wind_ts, ll_mean_v_wind_ts
 
-def _open_remote_ds(AR_config, netrc_path, t):
-    # ** Only works with MERRA-2
-    if t in pd.date_range(dt.datetime(1980,1,1,0), dt.datetime(1991,12,31,21), freq=AR_config['quv_files_timestep']):
-        MERRA2_stream = '100'
-    if t in pd.date_range(dt.datetime(1992,1,1,0), dt.datetime(2000,12,31,21), freq=AR_config['quv_files_timestep']):
-        MERRA2_stream = '200'
-    if t in pd.date_range(dt.datetime(2001,1,1,0), dt.datetime(2010,12,31,21), freq=AR_config['quv_files_timestep']):
-        MERRA2_stream = '300'
-    if t in pd.date_range(dt.datetime(2011,1,1,0), dt.datetime(2021,12,31,21), freq=AR_config['quv_files_timestep']):
-        MERRA2_stream = '400'
-    if t in pd.date_range(dt.datetime(2021,6,1,0), dt.datetime(2021,12,31,21), freq=AR_config['quv_files_timestep']):
-        MERRA2_stream = '401'
-    
+def _get_MERRA2_opendap_url(AR_config, t):
+    opendap_url_base = 'https://goldsmr5.gesdisc.eosdis.nasa.gov/opendap/MERRA2/'
     if AR_config['IVT_vert_coord'] == 'model_levels':
-        MERRA2_col = 'inst3_3d_asm_Nv'
-        quv_base_url_opendap = 'https://goldsmr5.gesdisc.eosdis.nasa.gov/opendap/MERRA2/M2I3NVASM.5.12.4/'
+        collection_shortname = 'M2I3NVASM'
+        collection_longname = 'inst3_3d_asm_Nv'
     elif AR_config['IVT_vert_coord'] == 'pres_levels':
-        MERRA2_col = 'inst3_3d_asm_Np'
-        quv_base_url_opendap = 'https://goldsmr5.gesdisc.eosdis.nasa.gov/opendap/MERRA2/M2I3NPASM.5.12.4/'
-        
-    url = quv_base_url_opendap+t.strftime('%Y/%m/')+'MERRA2_'+MERRA2_stream+'.'+MERRA2_col+'.'+\
-          t.strftime(AR_config['quv_fname_date_format'])+'.nc4'
+        collection_shortname = 'M2I3NPASM'
+        collection_longname = 'inst3_3d_asm_Np'
+    version = '5.12.4'
     
-    with open(netrc_path, 'r') as f:
-        text = f.readlines()[0]
-        username = text.split('login')[1].split('password')[0].strip()
-        password = text.split('password')[1].strip()
+    # Info on reprocessed data collection number changes to 401:
+    # https://disc.gsfc.nasa.gov/information/documents?title=Records%20of%20MERRA-2%20Data%20Reprocessing%20and%20Service%20Changes
+    if (t in pd.date_range(dt.datetime(2020,9,1,0), dt.datetime(2020,9,30,21), freq=AR_config['quv_files_timestep'])) or \
+        (t in pd.date_range(dt.datetime(2021,6,1,0), dt.datetime(2021,12,31,21), freq=AR_config['quv_files_timestep'])):
+        collection_number = '401'
+    else:
+        if t in pd.date_range(dt.datetime(1980,1,1,0), dt.datetime(1991,12,31,21), freq=AR_config['quv_files_timestep']):
+            collection_number = '100'
+        if t in pd.date_range(dt.datetime(1992,1,1,0), dt.datetime(2000,12,31,21), freq=AR_config['quv_files_timestep']):
+            collection_number = '200'
+        if t in pd.date_range(dt.datetime(2001,1,1,0), dt.datetime(2010,12,31,21), freq=AR_config['quv_files_timestep']):
+            collection_number = '300'
+        if t in pd.date_range(dt.datetime(2011,1,1,0), dt.datetime(2021,12,31,21), freq=AR_config['quv_files_timestep']):
+            collection_number = '400'    
     
-    session = setup_session(username, password, check_url=url)
-    pydap_ds = open_url(url, session=session)
-    store = xr.backends.PydapDataStore(pydap_ds)
-    ds = xr.open_dataset(store)
+    yr = t.strftime('%Y')
+    mth = t.strftime('%m')
+    day = t.strftime('%d')
+    url = f'{opendap_url_base}{collection_shortname}.'+\
+          f'{version}/{yr}/{mth}/MERRA2_{collection_number}.{collection_longname}.{yr}{mth}{day}.nc4'
     
-    return ds
+    return url
 
 
 def write_IVT_output_file(AR_config, timestep_hrs_str, times, lats, lons, uIVT, vIVT, IVT):
