@@ -67,7 +67,7 @@ quv_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_quv_delp_NH_3hr_model_
 quv_fname_prefix: 'MERRA2_'
 
 # String format of dates in quv file names (must be in python datetime strftime() format)
-# (Used to determine MERRA-2 file name for both locally stored AND remote (OPeNDAP) files)
+# - Used to determine MERRA-2 file name for both locally stored AND remote (OPeNDAP) files
 quv_fname_date_format: '%Y%m%d'
 
 # Temporal spacing of quv files (must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
