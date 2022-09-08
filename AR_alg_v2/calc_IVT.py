@@ -171,7 +171,7 @@ def _get_MERRA2_opendap_url(AR_config, t):
     # Info on reprocessed data collection number changes to 401:
     # https://disc.gsfc.nasa.gov/information/documents?title=Records%20of%20MERRA-2%20Data%20Reprocessing%20and%20Service%20Changes
     if (t in pd.date_range(dt.datetime(2020,9,1,0), dt.datetime(2020,9,30,21), freq=AR_config['quv_files_timestep'])) or \
-        (t in pd.date_range(dt.datetime(2021,6,1,0), dt.datetime(2021,12,31,21), freq=AR_config['quv_files_timestep'])):
+        (t in pd.date_range(dt.datetime(2021,6,1,0), dt.datetime(2021,9,30,21), freq=AR_config['quv_files_timestep'])):
         collection_number = '401'
     else:
         if t in pd.date_range(dt.datetime(1980,1,1,0), dt.datetime(1991,12,31,21), freq=AR_config['quv_files_timestep']):
