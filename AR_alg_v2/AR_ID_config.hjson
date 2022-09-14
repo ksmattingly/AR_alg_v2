@@ -75,13 +75,13 @@ quv_fname_date_format: '%Y%m%d'
 quv_files_timestep: '1D'
 
 # Directory containing IVT files
-IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_NH_3hr_model_levs/
+IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_global_3hr_model_levs/
 
 # Directory containing 1000-700 hPa mean wind files (if necessary)
 wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_1000_700_hPa_mean_wind_NH_3hr_pres_levs/
 
 # Directory containing IVT percentile rank (IVT PR) files
-IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_PR_NH_3hr_pres_levs/
+IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/
 
 # Directory to which output AR data will be written
 AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_pres_levs/
@@ -114,6 +114,7 @@ IVT_thresh: 150
 
 # Minimum IVT percentile rank threshold for a feature to potentially be considered an AR
 # v1 default value for Northern Hemisphere: 85
+# - Options for IVT PR threshold: 1,5,10,15,20,25,50,75,80,85,90,95,99
 IVT_PR_thresh: 85
 
 # Minimum number of grid points for filtering of potential AR objects

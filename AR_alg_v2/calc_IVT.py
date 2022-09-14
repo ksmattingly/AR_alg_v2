@@ -230,14 +230,17 @@ def write_IVT_output_file(AR_config, timestep_hrs_str, times, lats, lons, uIVT, 
     t_begin_str = times[0].strftime('%Y%m%d%H%M')
     t_end_str = times[-1].strftime('%Y%m%d%H%M')
 
-    # Include "_subset" in file name if area given by AR_config is not an entire hemisphere poleward of 10 degrees latitude
-    # Example file name: IVT_MERRA2_SH[_subset]_3hr_2021010100_2021013121.nc
-    if (AR_config['min_lat'] == 10) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
+    # Include "_subset" in file name if area given by AR_config is not the entire globe, or
+    #  an entire hemisphere poleward of 10 degrees latitude
+    # ** MERRA-2 only
+    if (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
+        fname = 'IVT_'+AR_config['data_source']+'_global_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'    
+    elif (AR_config['min_lat'] == 10) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
         fname = 'IVT_'+AR_config['data_source']+'_NH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
     elif (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == -10) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
         fname = 'IVT_'+AR_config['data_source']+'_SH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
     else:
-        fname = 'IVT_'+AR_config['data_source']+'_'+AR_config['hemisphere']+'H_subset_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
+        fname = 'IVT_'+AR_config['data_source']+'_subset_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
         
     IVT_ds.to_netcdf(AR_config['IVT_dir']+fname, encoding=encoding)
     
@@ -276,17 +279,23 @@ def write_ll_mean_wind_output_file(AR_config, timestep_hrs_str, times, lats, lon
     t_begin_str = times[0].strftime('%Y%m%d%H%M')
     t_end_str = times[-1].strftime('%Y%m%d%H%M')
     
-    # Include "_subset" in file name if area given by AR_config is not an entire hemisphere poleward of 10 degrees latitude
-    # Example file name: IVT_MERRA2_SH[_subset]_3hr_2021010100_2021013121.nc
-    if (AR_config['min_lat'] == 10) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 180):
-        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_'+AR_config['hemisphere']+'H_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
+    # Include "_subset" in file name if area given by AR_config is not the entire globe, or
+    #  an entire hemisphere poleward of 10 degrees latitude
+    # ** MERRA-2 only
+    if (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
+        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_global_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
+    elif (AR_config['min_lat'] == 10) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
+        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_NH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'        
+    elif (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == -10) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
+        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_SH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'        
     else:
-        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_'+AR_config['hemisphere']+'H_subset_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
+        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_subset_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
         
     ll_mean_wind_ds.to_netcdf(AR_config['wind_1000_700_mean_dir']+fname, encoding=encoding)
 
 
-if __name__ == '__main__':    
+if __name__ == '__main__':
+    # ** Change this to use argparse
     if len(sys.argv) != 4:
         print('Usage: python calc_IVT.py <begin_time> <end_time> <timestep>')
         print('<begin_time> and <end_time> must be in the format YYYY-MM-DD_HHMM')
