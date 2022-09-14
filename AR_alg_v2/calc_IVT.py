@@ -221,7 +221,9 @@ def write_IVT_output_file(AR_config, timestep_hrs_str, times, lats, lons, uIVT, 
     IVT_ds.lon.attrs['units'] = 'degrees_east'  
     
     IVT_ds.attrs['data_source'] = AR_config['data_source']
+    IVT_ds.attrs['IVT_data_origin'] = AR_config['IVT_data_origin']
     IVT_ds.attrs['IVT_vert_coord'] = AR_config['IVT_vert_coord']
+    
     if AR_config['IVT_vert_coord'] == 'pressure_levels':
         IVT_ds.attrs['IVT_calc_pressure_levels'] = str(AR_config['IVT_calc_plevs'])
     elif AR_config['IVT_vert_coord'] == 'model_levels':

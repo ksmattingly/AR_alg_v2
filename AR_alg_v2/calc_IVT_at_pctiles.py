@@ -86,8 +86,13 @@ def write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_h
         IVT_at_pctiles_ds['IVT_pctile_'+str(pctile)] = (['doy','lat','lon'], IVT_pctiles_out_data[:,i,:,:])
         IVT_at_pctiles_ds['IVT_pctile_'+str(pctile)].attrs['units'] = 'kg/m/s'
     
+    IVT_at_pctiles_ds.lat.attrs['units'] = 'degrees_north'
+    IVT_at_pctiles_ds.lon.attrs['units'] = 'degrees_east'  
+    
     IVT_at_pctiles_ds.attrs['data_source'] = AR_config['data_source']
+    IVT_at_pctiles_ds.attrs['IVT_data_origin'] = AR_config['IVT_data_origin']
     IVT_at_pctiles_ds.attrs['IVT_vert_coord'] = AR_config['IVT_vert_coord']
+
     if AR_config['IVT_vert_coord'] == 'pressure_levels':
         IVT_at_pctiles_ds.attrs['IVT_calc_pressure_levels'] = str(AR_config['IVT_calc_plevs'])
     elif AR_config['IVT_vert_coord'] == 'model_levels':
