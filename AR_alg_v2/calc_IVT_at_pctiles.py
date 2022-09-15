@@ -92,6 +92,9 @@ def write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_h
     IVT_at_pctiles_ds.attrs['data_source'] = AR_config['data_source']
     IVT_at_pctiles_ds.attrs['IVT_data_origin'] = AR_config['IVT_data_origin']
     IVT_at_pctiles_ds.attrs['IVT_vert_coord'] = AR_config['IVT_vert_coord']
+    IVT_at_pctiles_ds.attrs['IVT_climatology_start_year'] = start_year
+    IVT_at_pctiles_ds.attrs['IVT_climatology_end_year'] = end_year
+    IVT_at_pctiles_ds.attrs['IVT_climatology_timestep_hrs'] = timestep_hrs_str
 
     if AR_config['IVT_vert_coord'] == 'pressure_levels':
         IVT_at_pctiles_ds.attrs['IVT_calc_pressure_levels'] = str(AR_config['IVT_calc_plevs'])
