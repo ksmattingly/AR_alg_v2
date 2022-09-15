@@ -1,3 +1,4 @@
+import argparse
 import os
 import hjson
 import xarray as xr
@@ -5,7 +6,6 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 import glob
-import sys
 import warnings
 
 warnings.simplefilter('ignore', category=RuntimeWarning)
@@ -296,18 +296,23 @@ def write_ll_mean_wind_output_file(AR_config, timestep_hrs_str, times, lats, lon
     ll_mean_wind_ds.to_netcdf(AR_config['wind_1000_700_mean_dir']+fname, encoding=encoding)
 
 
+def parse_args():
+    """
+    Parse arguments passed to script at runtime.
+    """
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('begin_time', help='Begin time in the format YYYY-MM-DD_HHMM')
+    parser.add_argument('end_time', help='End time in the format YYYY-MM-DD_HHMM')
+    parser.add_argument('timestep', help='Timestep as integer number of hours (e.g. 3)')
+    args = parser.parse_args()
+    
+    return args.begin_time, args.end_time, args.timestep
+
+
 if __name__ == '__main__':
-    # ** Change this to use argparse
-    if len(sys.argv) != 4:
-        print('Usage: python calc_IVT.py <begin_time> <end_time> <timestep>')
-        print('<begin_time> and <end_time> must be in the format YYYY-MM-DD_HHMM')
-        print('<timestep> must be an integer number of hours (e.g. 3)')
-        sys.exit()
-    
-    begin_t_str = sys.argv[1]
-    end_t_str = sys.argv[2]
-    timestep_hrs_str = sys.argv[3]
-    
+    begin_t_str, end_t_str, timestep_hrs_str = parse_args()
+        
     _code_dir = os.path.dirname(os.path.realpath(__file__))
     AR_ID_config_path = _code_dir+'/AR_ID_config.hjson'
     with open(AR_ID_config_path) as f:

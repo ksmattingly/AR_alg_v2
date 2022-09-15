@@ -1,5 +1,5 @@
+import argparse
 import os
-import sys
 import glob
 import hjson
 import datetime as dt
@@ -108,18 +108,24 @@ def write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_h
         fname = 'IVT_at_pctiles_'+AR_config['data_source']+'_subset_'+timestep_hrs_str+'hr_'+start_year+'_'+end_year+'_climo.nc'
     
     IVT_at_pctiles_ds.to_netcdf(AR_config['IVT_PR_dir']+fname)
-        
 
-if __name__ == '__main__':
-    # ** Change this to use argparse
-    if len(sys.argv) != 4:
-        print('Usage: python calc_IVT_PR.py <start_year> <end_year> <timestep>')
-        print('<timestep> must be an integer number of hours (e.g. 3)')
-        sys.exit()
+
+def parse_args():
+    """
+    Parse arguments passed to script at runtime.
+    """
     
-    start_year = sys.argv[1]
-    end_year = sys.argv[2]
-    timestep_hrs_str = sys.argv[3]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('start_year', help='Start year for IVT climatology (e.g. 1980)')
+    parser.add_argument('end_year', help='End year for IVT climatology (e.g. 2020)')
+    parser.add_argument('timestep', help='Timestep for IVT climatology as integer number of hours (e.g. 3)')
+    args = parser.parse_args()
+    
+    return args.start_year, args.end_year, args.timestep
+
+
+if __name__ == '__main__':    
+    start_year, end_year, timestep_hrs_str = parse_args()
         
     _code_dir = os.path.dirname(os.path.realpath(__file__))
     AR_ID_config_path = _code_dir+'/AR_ID_config.hjson'
