@@ -1,7 +1,7 @@
 {
 # Data sources currently supported:
 # - MERRA2
-data_source: MERRA2
+data_source: ERA5
 
 # Northern or Southern hemisphere (cutoff at 10N or -10S)
 # Options:
@@ -11,7 +11,7 @@ hemisphere: N
 
 # Minimum latitude (degrees) of domain over which ARs will be identified
 # - Northern Hemisphere: must be 10N or higher
-min_lat: 10
+min_lat: -90
 
 # Maximum latitude (degrees) of domain over which ARs will be identified
 # - Southern Hemisphere: must be -10S or lower
@@ -19,23 +19,23 @@ max_lat: 90
 
 # Minimum longitude (degrees) of domain over which ARs will be identified
 # Format: degrees east (possible range of -180 to 180 degrees)
-min_lon: -180
+min_lon: 0
 
 # Maximum longitude (degrees) of domain over which ARs will be identified
 # Format: degrees east (possible range of -180 to 180 degrees)
-max_lon: 179.375
+max_lon: 359.75
 
 # Longitude spacing (degrees) of data source's native grid (assumes regular grid)
-lon_res: 0.625
+lon_res: 0.25
 
 # Latitude spacing (degrees) of data source's native grid (assumes regular grid)
-lat_res: 0.5
+lat_res: 0.25
 
 # Whether IVT was provided from reanalysis / model data set, or calculated by this package
 # Options:
 # - calculated_during_AR_ID_processing
 # - provided_in_original_dataset
-IVT_data_origin: calculated_during_AR_ID_processing
+IVT_data_origin: provided_in_original_dataset
 
 # Vertical coordinate system used to calculate IVT (either pressure levels or model levels)
 # - Even if pre-calculated IVT is used for AR identification, leave this variable uncommented,
@@ -55,7 +55,7 @@ IVT_calc_plevs: [1000,975,950,925,900,875,850,825,800,775,750,725,700,650,600,55
 IVT_calc_mlevs: [41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72]
 
 # Whether to use OPeNDAP to remotely access input files for IVT calculation
-use_opendap: True
+use_opendap: False
 
 # Directory containing 3D u/v-wind and specific humidity files for IVT calculation
 # For MERRA-2 model level data, these files also contain DELP (pressure thickness of model levels)
@@ -66,16 +66,30 @@ quv_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_quv_delp_NH_3hr_model_
 # (Ignored if OPeNDAP is used)
 quv_fname_prefix: 'MERRA2_'
 
-# String format of dates in quv file names (must be in python datetime strftime() format)
+# String format of dates in quv file names 
+# - Must be in python datetime strftime() format
 # - Used to determine MERRA-2 file name for both locally stored AND remote (OPeNDAP) files
 quv_fname_date_format: '%Y%m%d'
 
-# Temporal spacing of quv files (must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
-#  See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
+# Temporal spacing of quv files
+# - Must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
+# - See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
 quv_files_timestep: '1D'
 
 # Directory containing IVT files
-IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_global_3hr_model_levs/
+IVT_dir: /doppler/data7/kmattingly/ERA5_IVT_global_1hr_from-model-levs/
+
+# File name prefix of uvIVT files (if using pre-calculated IVT components, i.e. from ERA5)
+uvIVT_precalc_fname_prefix: 'ERA5_uvIVT'
+
+# String format of dates in uvIVT file names (if using pre-calculated IVT components, i.e. from ERA5)
+# - Must be in python datetime strftime() format
+uvIVT_precalc_fname_date_format: '%Y_%m'
+
+# Temporal spacing of uvIVT files (if using pre-calculated IVT components, i.e. from ERA5)
+# - Must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
+# - See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
+uvIVT_precalc_files_timestep: '1M'
 
 # Directory containing 1000-700 hPa mean wind files (if necessary)
 wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_1000_700_hPa_mean_wind_NH_3hr_pres_levs/

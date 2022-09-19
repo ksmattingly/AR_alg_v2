@@ -54,7 +54,7 @@ def calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=Fa
         # For remotely stored data, open each daily file in sequence and loop
         # timesteps in that file
         for file_t in quv_file_times:
-            # Assumes we are calculating over the full longitude span for either the NH or SH
+            # Assumes we are calculating over the full longitude span for the given latitudes
             url = _get_MERRA2_opendap_url(AR_config, file_t)
             quv_ds_ts_full = xr.open_dataset(url)
             # Assumes MERRA-2 data is organized into daily files
