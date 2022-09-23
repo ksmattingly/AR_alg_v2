@@ -1,3 +1,18 @@
+# Partition ERA5 monthly global IVT files (1-hourly) into smaller chunks for manageable IVT percentile calculation
+# - Chunked files have IVT only (not u-/v-IVT) and are 3-hourly resolution (instead of 1-hourly)
+# - Chunked files are split into 6 domains:
+#   - NH (>10N), sector 1 (longitudes 0-120)
+#   - NH (>10N), sector 2 (longitudes 120-240)
+#   - NH (>10N), sector 3 (longitudes 240-360)
+#   - SH (<10S), sector 1 (longitudes 0-120)
+#   - SH (<10S), sector 2 (longitudes 120-240)
+#   - SH (<10S), sector 3 (longitudes 240-360)
+
+# To calculate ERA5 IVT percentiles using chunked data, calc_IVT_at_pctiles.py was run 6 separate times, once on
+# each set of chunked IVT files. Then the 6 chunked files were patched back together.
+# - AR_ID_config.hjson was changed before each of the 6 runs, to change the lat/lon boundaries of domain and the
+#   directory in which IVT input files were stored.
+
 import xarray as xr
 import os
 import numpy as np
