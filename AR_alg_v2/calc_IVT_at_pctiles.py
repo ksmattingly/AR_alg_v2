@@ -9,24 +9,35 @@ import numpy as np
 import pandas as pd
 
 
-def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs_str):
+def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy, end_doy):
     """
     Calculate IVT values at a range of percentiles for each julian day of the year.
     """
     
     IVT_dir = AR_config['IVT_dir']
     IVT_paths = glob.glob(IVT_dir+'*.nc')
-    IVT_ds_full = xr.open_mfdataset(IVT_paths)
+    years_str = [str(year) for year in np.arange(int(start_year), int(end_year)+1, 1)]
+    IVT_paths_filtered = [p for p in IVT_paths if p[-15:-11] in years_str]
+    IVT_ds_full = xr.open_mfdataset(IVT_paths_filtered)
     IVT_ds_full['time'] = pd.to_datetime(IVT_ds_full.time.data)
+    
+    # Make sure latitude and longitude are named "lat" and "lon",
+    # so that these coordinate names can be used to subset data
+    # - ** Files obtained from ERA5 have coords named "latitude" and "longitude";
+    #   MERRA-2 files have "lat" and "lon". This may need to be adapted for any
+    #   other data sources
+    if 'latitude' in IVT_ds_full.coords:
+        IVT_ds_full = IVT_ds_full.rename({'latitude':'lat'})
+    if 'longitude' in IVT_ds_full.coords:
+        IVT_ds_full = IVT_ds_full.rename({'longitude':'lon'})
     
     begin_t = dt.datetime(int(start_year), 1, 1, 0)
     end_t = dt.datetime(int(end_year), 12, 31, 21)
-    timestep_hrs = int(timestep_hrs_str)
-    times = pd.date_range(begin_t, end_t, freq=str(timestep_hrs)+'H')
+    times = pd.date_range(begin_t, end_t, freq=timestep_hrs+'H')
     
-    lats_subset = np.arange(AR_config['min_lat'], AR_config['max_lat']+AR_config['lat_res'], AR_config['lat_res'])
-    lons_subset = np.arange(AR_config['min_lon'], AR_config['max_lon']+AR_config['lon_res'], AR_config['lon_res'])
-    IVT_ds = IVT_ds_full.sel(time=times, lat=lats_subset, lon=lons_subset)
+    lats_subset = np.arange(AR_config['min_lat'], AR_config['max_lat'], AR_config['lat_res'])
+    lons_subset = np.arange(AR_config['min_lon'], AR_config['max_lon'], AR_config['lon_res'])
+    IVT_ds = IVT_ds_full.IVT.sel(time=times, lat=lats_subset, lon=lons_subset)
     
     # For leap years, subtract 1 from all doys after the leap day to get corrected doy
     leap_years = np.arange(1900,2100,4)
@@ -39,8 +50,8 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs_str):
             doys_fixed.append(doy)
     IVT_ds['doy'] = xr.DataArray(doys_fixed, coords=[IVT_ds.time], dims=['time'])
     
-    doys = np.arange(1,366,1)
-    pctiles = np.array([1,5,10,15,20,25,50,75,80,85,90,95,99])
+    doys = np.arange(int(start_doy),int(end_doy)+1,1)
+    pctiles = np.array([75,80,85,90,95,99])
     IVT_pctiles_out_data = np.empty((len(doys), len(pctiles), IVT_ds.lat.shape[0], IVT_ds.lon.shape[0]))
     
     for i, doy in enumerate(doys):
@@ -58,7 +69,7 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs_str):
             window_doys = np.arange(window_start_doy, window_end_doy + 1, 1)
             
         IVT_ds_window = IVT_ds.sel(time=IVT_ds.time.dt.dayofyear.isin(window_doys))
-        IVT_at_pctiles_doy = IVT_ds_window.IVT.chunk(dict(time=-1)).quantile(pctiles/100, dim='time', skipna=True)
+        IVT_at_pctiles_doy = IVT_ds_window.chunk(dict(time=-1)).quantile(pctiles/100, dim='time', skipna=True)
         IVT_pctiles_out_data[i,:,:,:] = IVT_at_pctiles_doy.to_numpy()
         
         print(f'Finished doy: {doy} at '+str(dt.datetime.now()))
@@ -100,15 +111,26 @@ def write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_h
         IVT_at_pctiles_ds.attrs['IVT_calc_pressure_levels'] = str(AR_config['IVT_calc_plevs'])
     elif AR_config['IVT_vert_coord'] == 'model_levels':
         IVT_at_pctiles_ds.attrs['IVT_calc_model_levels'] = str(AR_config['IVT_calc_mlevs'])
+        
+    minlat = str(AR_config['min_lat'])
+    maxlat = str(AR_config['max_lat'])
+    minlon = str(AR_config['min_lon'])
+    maxlon = str(AR_config['max_lon'])
+    start_doy = str(doys[0])
+    end_doy = str(doys[-1])
 
-    if (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'IVT_at_pctiles_'+AR_config['data_source']+'_global_'+timestep_hrs_str+'hr_'+start_year+'_'+end_year+'_climo.nc'    
-    elif (AR_config['min_lat'] == 10) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'IVT_at_pctiles_'+AR_config['data_source']+'_NH_'+timestep_hrs_str+'hr_'+start_year+'_'+end_year+'_climo.nc'
-    elif (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == -10) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'IVT_at_pctiles_'+AR_config['data_source']+'_SH_'+timestep_hrs_str+'hr_'+start_year+'_'+end_year+'_climo.nc'
+    if ((minlat == -90) and (maxlat == 90) and (maxlon - minlon == 360)) and\
+        (start_doy == '1' and end_doy == '365'):
+        fname = 'IVT_at_pctiles_'+AR_config['data_source']+f'_global_{timestep_hrs_str}hr_{start_year}_{end_year}_climo.nc'    
+    elif ((minlat == 10) and (maxlat == 90) and (maxlon - minlon == 360)) and\
+        (start_doy == '1' and end_doy == '365'):
+        fname = 'IVT_at_pctiles_'+AR_config['data_source']+f'_NH_{timestep_hrs_str}hr_{start_year}_{end_year}_climo.nc'  
+    elif ((minlat == -90) and (maxlat == -10) and (maxlon - minlon == 360)) and\
+        (start_doy == '1' and end_doy == '365'):
+        fname = 'IVT_at_pctiles_'+AR_config['data_source']+f'_SH_{timestep_hrs_str}hr_{start_year}_{end_year}_climo.nc'  
     else:
-        fname = 'IVT_at_pctiles_'+AR_config['data_source']+'_subset_'+timestep_hrs_str+'hr_'+start_year+'_'+end_year+'_climo.nc'
+        fname = 'IVT_at_pctiles_'+AR_config['data_source']+\
+                f'_lat_{minlat}_{maxlat}_lon_{minlon}_{maxlon}_{timestep_hrs_str}hr_doys_{start_doy}_{end_doy}_{start_year}_{end_year}_climo.nc' 
     
     IVT_at_pctiles_ds.to_netcdf(AR_config['IVT_PR_dir']+fname)
 
@@ -122,13 +144,15 @@ def parse_args():
     parser.add_argument('start_year', help='Start year for IVT climatology (e.g. 1980)')
     parser.add_argument('end_year', help='End year for IVT climatology (e.g. 2020)')
     parser.add_argument('timestep', help='Timestep for IVT climatology as integer number of hours (e.g. 3)')
+    parser.add_argument('start_doy', help='Day of year (1-365) at which to start calculations')
+    parser.add_argument('end_doy', help='Day of year (1-365) at which to end calculations')
     args = parser.parse_args()
     
-    return args.start_year, args.end_year, args.timestep
+    return args.start_year, args.end_year, args.timestep, args.start_doy, args.end_doy
 
 
 if __name__ == '__main__':    
-    start_year, end_year, timestep_hrs_str = parse_args()
+    start_year, end_year, timestep_hrs, start_doy, end_doy = parse_args()
         
     _code_dir = os.path.dirname(os.path.realpath(__file__))
     AR_ID_config_path = _code_dir+'/AR_ID_config.hjson'
@@ -138,6 +162,8 @@ if __name__ == '__main__':
     doys, pctiles, lats, lons, IVT_pctiles_out_data = calc_IVT_at_pctiles(AR_config,
                                                                           start_year,
                                                                           end_year,
-                                                                          timestep_hrs_str)
-    write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_hrs_str,
+                                                                          timestep_hrs,
+                                                                          start_doy,
+                                                                          end_doy)
+    write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_hrs, start_doy, end_doy,
                                      doys, pctiles, lats, lons, IVT_pctiles_out_data)
