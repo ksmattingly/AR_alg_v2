@@ -1,41 +1,61 @@
 {
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# ----- Input data source --------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------------
+
 # Data sources currently supported:
 # - MERRA2
-data_source: ERA5
+# - ERA5
+data_source: MERRA2
+
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# ----- Spatial domain and grid (for calculations: IVT, IVT at percentiles, AR ID) -----------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------------
 
 # Northern or Southern hemisphere (cutoff at 10N or -10S)
 # Options:
-# - N
-# - S
-hemisphere: N
+# - NH
+# - SH
+hemisphere: NH
 
-# Minimum latitude (degrees) of domain over which ARs will be identified
-# - Northern Hemisphere: must be 10N or higher
-min_lat: -90
+# Minimum latitude (degrees) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - Northern Hemisphere: possible range = 10 to 90
+# - Southern Hemisphere: possible range = -90 to -10
+min_lat: 10
 
-# Maximum latitude (degrees) of domain over which ARs will be identified
-# - Southern Hemisphere: must be -10S or lower
+# Maximum latitude (degrees) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - Northern Hemisphere: possible range = 10 to 90
+# - Southern Hemisphere: possible range = -90 to -10
 max_lat: 90
 
-# Minimum longitude (degrees) of domain over which ARs will be identified
-# Format: degrees east (possible range of -180 to 180 degrees)
-min_lon: 0
+# Minimum longitude (degrees east) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - Follow convention of input data (e.g. -180 minumum longitude for MERRA-2; ERA5 seems to often use 0 as default minimum longitude)
+# - For AR ID, input data must cover the entire zonal range of the globe (e.g. -180 to 180 or 0 to 360)
+min_lon: -180
 
-# Maximum longitude (degrees) of domain over which ARs will be identified
-# Format: degrees east (possible range of -180 to 180 degrees)
-max_lon: 359.75
+# Maximum longitude (degrees east) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - Follow convention of input data (e.g. -180 minimum longitude for MERRA-2; ERA5 seems to use 0 as default minimum longitude)
+# - For AR ID, input data must cover the entire zonal range of the globe (e.g. -180 to 180 or 0 to 360)
+max_lon: 179.375
 
 # Longitude spacing (degrees) of data source's native grid (assumes regular grid)
-lon_res: 0.25
+lon_res: 0.625
 
 # Latitude spacing (degrees) of data source's native grid (assumes regular grid)
-lat_res: 0.25
+lat_res: 0.5
+
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# ----- IVT calculation parameters -----------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------------
 
 # Whether IVT was provided from reanalysis / model data set, or calculated by this package
 # Options:
 # - calculated_during_AR_ID_processing
 # - provided_in_original_dataset
-IVT_data_origin: provided_in_original_dataset
+IVT_data_origin: calculated_during_AR_ID_processing
 
 # Vertical coordinate system used to calculate IVT (either pressure levels or model levels)
 # - Even if pre-calculated IVT is used for AR identification, leave this variable uncommented,
@@ -46,24 +66,33 @@ IVT_data_origin: provided_in_original_dataset
 IVT_vert_coord: model_levels
 
 # Pressure levels (hPa) used to calculate IVT
-# (Ignored if IVT calculated from model level data is used)
+# - (Ignored if IVT calculated from model level data is used)
 IVT_calc_plevs: [1000,975,950,925,900,875,850,825,800,775,750,725,700,650,600,550,500,450,400,350,300,250,200,150]
 
 # Model levels (indices) used to calculate IVT
-# (Ignored if IVT calculated from pressure level data, or pre-calculated data derived from model levels [i.e. from ERA5] is used)
-# MERRA-2 (by default, only use the lowermost 32 (of 72) model levels, extending down from ~150 hPa to the surface):
+# - (Ignored if IVT calculated from pressure level data is used)
+# - MERRA-2: by default, only use the lowermost 32 (of 72) model levels (i.e. model levels 41-72), 
+#   extending down from ~150 hPa to the surface
+# - If pre-calculated u/v-IVT components on model levels are used to calculate IVT (e.g. from ERA5 data),
+#   then set IVT_calc_mlevs: all
 IVT_calc_mlevs: [41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72]
 
+
+# --------------------------------------------------------------------------------------------------------------------------------
+# ----- Input and output data locations and file characteristics (for calculations: IVT, IVT at percentiles, AR ID) --------------
+# --------------------------------------------------------------------------------------------------------------------------------
+
 # Whether to use OPeNDAP to remotely access input files for IVT calculation
+# - Currently supported for MERRA-2 only
 use_opendap: False
 
 # Directory containing 3D u/v-wind and specific humidity files for IVT calculation
-# For MERRA-2 model level data, these files also contain DELP (pressure thickness of model levels)
-# (Ignored if OPeNDAP is used)
+# - For MERRA-2 model level IVT calculation, these files must also contain DELP (pressure thickness of model levels)
+# - (Ignored if OPeNDAP is used)
 quv_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_quv_delp_NH_3hr_model_levs/
 
 # File name prefix of quv files (used by xarray to read in files as a multi-file dataset)
-# (Ignored if OPeNDAP is used)
+# - (Ignored if OPeNDAP is used)
 quv_fname_prefix: 'MERRA2_'
 
 # String format of dates in quv file names 
@@ -71,93 +100,101 @@ quv_fname_prefix: 'MERRA2_'
 # - Used to determine MERRA-2 file name for both locally stored AND remote (OPeNDAP) files
 quv_fname_date_format: '%Y%m%d'
 
-# Temporal spacing of quv files
+# Temporal span of each quv file
 # - Must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
 # - See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
 quv_files_timestep: '1D'
 
 # Directory containing IVT files
-IVT_dir: /doppler/data7/kmattingly/ERA5_IVT_global_1hr_from-model-levs/
+IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_global_3hr_model_levs/
 
-# File name prefix of uvIVT files (if using pre-calculated IVT components, i.e. from ERA5)
+# String format of begin and end dates in IVT file names 
+# - Must be in python datetime strftime() format
+IVT_fname_date_format: '%Y%m%d%H%M'
+
+# File name prefix of uvIVT files (if using pre-calculated IVT components to calculate IVT and IVT at percentiles, i.e. from ERA5)
 uvIVT_precalc_fname_prefix: 'ERA5_uvIVT'
 
-# String format of dates in uvIVT file names (if using pre-calculated IVT components, i.e. from ERA5)
+# String format of dates in uvIVT file names (if using pre-calculated IVT components to calculate IVT and IVT at percentiles, i.e. from ERA5)
 # - Must be in python datetime strftime() format
 uvIVT_precalc_fname_date_format: '%Y_%m'
 
-# Temporal spacing of uvIVT files (if using pre-calculated IVT components, i.e. from ERA5)
+# Temporal span of each uvIVT file (if using pre-calculated IVT components to calculate IVT and IVT at percentiles, i.e. from ERA5)
 # - Must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
 # - See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
 uvIVT_precalc_files_timestep: '1M'
 
-# Directory containing 1000-700 hPa mean wind files (if necessary)
+# Directory containing 1000-700 hPa mean wind files (if direction_filter_type is mean_wind_1000_700_hPa; see below)
 wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_1000_700_hPa_mean_wind_NH_3hr_pres_levs/
 
-# Directory containing IVT percentile rank (IVT PR) files
+# Directory containing IVT at percentiles (IVT PR) files
 IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/
 
 # Directory to which output AR data will be written
-AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_pres_levs/
+AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_model_levs/
 
-# Whether to use 1000-700 hPa mean wind or IVT vector for direction filtering criteria
-# Options:
-# - mean_wind_1000_700_hPa
-# - IVT
-# v1 default value: mean_wind_1000_700_hPa
-direction_type: IVT
 
-# Whether to calculate AR center axes or not
-# ** Note: as of 2022-08-26, I can't remember if axis calculation actually works. Need to investigate this further.
-# Options:
-# - True
-# - False
-calc_axis: False
-
-# Whether to output information about features that were not classified as ARs
-# Options:
-# - True
-# - False
-# v1 default: True
-non_AR_data_output: False
+# --------------------------------------------------------------------------------------------------------------------------------
+# ----- AR identification parameters ---------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------------
 
 # Minimum IVT threshold (kg/m/s) for a feature to potentially be considered an AR
 # - v1 default value for Northern Hemisphere: 150 kg/m/s
-# - Value for Antarctic ARs: 50 kg/m/s
+# - Value for past work on Antarctic ARs: 50 kg/m/s
 IVT_thresh: 150
 
 # Minimum IVT percentile rank threshold for a feature to potentially be considered an AR
-# v1 default value for Northern Hemisphere: 85
-# - Options for IVT PR threshold: 1,5,10,15,20,25,50,75,80,85,90,95,99
+# - v1 default value for Northern Hemisphere: 85
+# - Options for IVT PR threshold are limited to the values that were output by "calc_IVT_at_pctiles" function in calc_IVT_at_pctiles.py
+# - As of 2022-09-27, these values are: [75,80,85,90,95,99]
+# - Note that as of 2022-09-27 the global *ERA5* IVT PR file, created by stitching together data from 6 spatial chunks, 
+#   will only contain IVT at percentile 85. (To use any other percentiles as the minimum threshold for ERA5, the chunk files
+#   for that percentile will need to be stitched together into a global file.)
 IVT_PR_thresh: 85
 
 # Minimum number of grid points for filtering of potential AR objects
 # - v1 default value (tuned to 0.5 degree lat/lon grid): 150
 # - Value for Antarctic ARs identified using ERA5 data: 300
+# - Note that this is not an actual criterion for AR identification, it is used only to filter out
+#   small objects from further processing for speed.
 min_num_grid_pts: 150
 
 # Minimum object length (km) to be considered an AR
-# v1 default value: 1500
+# - v1 default value: 1500
 min_length: 1500
 
 # Minimum length / width ratio to be considered an AR
 min_length_width_ratio: 1.5
 
-# Latitude (degrees), poleward of which the v-wind direction threshold is relaxed
-# v1 default value for Northern Hemisphere: 70. This means that features poleward of 70N are not required to have v-wind directed poleward, in order to capture Arctic ARs that may transport moisture in an equatorward direction.
-# Set this value to 90 (Northern Hemisphere) or -90 (Southern Hemisphere) to require v-wind to be poleward at *all* latitudes
-vwind_poleward_cutoff_lat: 70
+# Whether to use 1000-700 hPa mean u/v-wind or u/v-IVT for direction filtering criteria
+# Options:
+# - mean_wind_1000_700_hPa
+# - IVT
+# v1 default value: mean_wind_1000_700_hPa
+direction_filter_type: IVT
 
-# Minimum v-wind (m/s) required to be considered an AR
-# A threshold of 0 means the direction of transport must be northward (Northern Hemisphere) / southward (Southern Hemisphere)
-# v1 default value for Northern Hemisphere = 0
-vwind_thresh: 0
+# Latitude (degrees), poleward of which the v-direction threshold is relaxed
+# - v1 default value for Northern Hemisphere: 70. This means that features poleward of 70N are not required to have
+#   v-wind or vIVT directed poleward, in order to capture Arctic ARs that may transport moisture in an equatorward direction.
+# - v2 default value for NH (SH): 66.56N (-66.56S) -- the Arctic (Antarctic) circle
+# - To require v-wind to be poleward at *all* latitudes, set this value to 90 (Northern Hemisphere) or -90 (Southern Hemisphere) 
+v_poleward_cutoff_lat: 66.56
 
-# Latitude (degrees) equatorward of which the u-wind threshold is used to filter out easterly non-AR subtropical moisture plumes
-# v1 default value for Northern Hemisphere: 35
-trop_subtrop_bound_lat: 35
+# Minimum v-wind (m/s) or vIVT value (kg/m/s) required to be considered an AR
+# - A threshold of 0 means the direction of transport must be northward (Northern Hemisphere) / southward (Southern Hemisphere)
+# - v1 default value for Northern Hemisphere = 0
+# - If using a value other than 0, think carefully about whether the value makes sense for the hemisphere (NH or SH) 
+#   in which calculations are being performed
+v_thresh: 0
 
-# Minimum u-wind value (m/s) for objects equatorward of subtropical cutoff latitude
-# v1 default value: 2 
-trop_subtrop_uwind_thresh: 2
+# Latitude (degrees) equatorward of which the u-wind threshold is used to filter out easterly non-AR tropical and subtropical moisture plumes
+# - v1 default value for Northern Hemisphere: 35
+subtrop_bound_lat: 35
+
+# Minimum u-wind value (m/s) or uIVT value (kg/m/s) for objects equatorward of subtropical cutoff latitude
+# - v1 default value for u-wind (m/s): 2
+# - v2 default value for uIVT (kg/m/s): 20
+# - This value should stay the same regardless of hemisphere (NH or SH)
+subtrop_u_thresh: 20
+
 }
