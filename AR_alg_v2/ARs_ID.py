@@ -474,14 +474,14 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
         if feature_props.area < AR_config['min_num_grid_pts']:
             continue
         
-        feature_array = np.where(label_array == label, 1, 0)
         # Calculate feature centroid
-        centroid = _calc_centroid(AR_config, feature_props, lats, lons_wrap)
+        centroid_lat = _calc_centroid_lat(feature_props, lats)
         
+        feature_array = np.where(label_array == label, 1, 0)
         # Test if feature is transporting moisture poleward (if not centered in
         # polar latitudes), and is not an east-to-west tropical/subtropical
         # moisture transport plume (if centered in tropical/subtropical latitudes)
-        direction_flags = _check_direction(AR_config, centroid, feature_array, u_wrap, v_wrap)
+        direction_flags = _check_direction(AR_config, centroid_lat, feature_array, u_wrap, v_wrap)
         if direction_flags > 0:
             continue
         
@@ -503,25 +503,22 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
     
     return AR_labels_timestep, AR_count_timestep
 
-def _calc_centroid(AR_config, feature_props, lats, lons_wrap):
+def _calc_centroid_lat(feature_props, lats):
     """
     Helper to apply_AR_criteria.
     
     Calculate feature centroid lat/lon.
     """
     
-    centroid_ixs_float = feature_props.centroid
-    lat_ix = int(math.ceil(centroid_ixs_float[0])) if \
-        ((math.ceil(centroid_ixs_float[0]) - centroid_ixs_float[0]) <= AR_config['lat_res']) \
-        else int(centroid_ixs_float[0])
-    lon_ix = int(math.ceil(centroid_ixs_float[0])) if \
-        ((math.ceil(centroid_ixs_float[0]) - centroid_ixs_float[0]) <= AR_config['lon_res']) \
-        else int(centroid_ixs_float[0])
-    centroid = (lats[lat_ix], lons_wrap[lon_ix])
+    cent_ixs_float = feature_props.centroid
+    lat_ix = \
+        math.ceil(cent_ixs_float[0]) if ((math.ceil(cent_ixs_float[0]) - cent_ixs_float[0]) <= 0.5) \
+        else math.floor(cent_ixs_float[0])
+    centroid_lat = lats[lat_ix]
     
-    return centroid
+    return centroid_lat
 
-def _check_direction(AR_config, centroid, feature_array, u_wrap, v_wrap):
+def _check_direction(AR_config, centroid_lat, feature_array, u_wrap, v_wrap):
     """
     Helper to apply_AR_criteria.
     
@@ -535,15 +532,15 @@ def _check_direction(AR_config, centroid, feature_array, u_wrap, v_wrap):
     v_mean = np.nanmean(v_wrap[feature_ixs])
     if AR_config['hemisphere'] == 'NH':
         if np.logical_and((v_mean < AR_config['v_thresh']), 
-                          (centroid[0] < AR_config['v_poleward_cutoff_lat'])):
+                          (centroid_lat < AR_config['v_poleward_cutoff_lat'])):
             vwind_equatorward_flag += 1
     elif AR_config['hemisphere'] == 'SH': 
         if np.logical_and((v_mean > AR_config['v_thresh']), 
-                          (centroid[0] > AR_config['v_poleward_cutoff_lat'])):
+                          (centroid_lat > AR_config['v_poleward_cutoff_lat'])):
             vwind_equatorward_flag += 1
 
     trop_subtrop_east_west_plume_flag = 0
-    if np.abs(centroid[0]) < np.abs(AR_config['subtrop_bound_lat']):
+    if np.abs(centroid_lat) < np.abs(AR_config['subtrop_bound_lat']):
         u_mean = np.nanmean(u_wrap[feature_ixs])
         if u_mean < AR_config['subtrop_u_thresh']:
             trop_subtrop_east_west_plume_flag += 1        
