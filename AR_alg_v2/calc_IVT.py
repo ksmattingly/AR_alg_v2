@@ -12,7 +12,7 @@ warnings.simplefilter('ignore', category=RuntimeWarning)
 
 g = 9.80665
 
-def calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=False,
+def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
              calc_ll_mean_wind=False, netrc_path='/home/kmattingly/.netrc'):
     """
     Calculate arrays of IVT and its u- and v-components over the time range
@@ -29,11 +29,10 @@ def calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=Fa
     Return geolocation (lat, lon) and time arrays in addition to the IVT arrays.
     """
     
-    begin_t = dt.datetime.strptime(begin_t_str, '%Y-%m-%d_%H%M')
-    end_t = dt.datetime.strptime(end_t_str, '%Y-%m-%d_%H%M')
-    timestep_hrs = int(timestep_hrs_str)
-    times = pd.date_range(begin_t, end_t, freq=str(timestep_hrs)+'H')
-    quv_file_times = pd.date_range(begin_t, end_t, freq=AR_config['quv_files_timestep'])
+    begin_dt = dt.datetime.strptime(begin_time, '%Y-%m-%d_%H%M')
+    end_dt = dt.datetime.strptime(end_time, '%Y-%m-%d_%H%M')
+    times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')
+    quv_file_times = pd.date_range(begin_dt, end_dt, freq=AR_config['quv_files_timestep'])
     
     lats = np.arange(AR_config['min_lat'], AR_config['max_lat']+AR_config['lat_res'], AR_config['lat_res'])
     lons = np.arange(AR_config['min_lon'], AR_config['max_lon']+AR_config['lon_res'], AR_config['lon_res'])
@@ -54,7 +53,7 @@ def calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=Fa
         # For remotely stored data, open each daily file in sequence and loop
         # timesteps in that file
         for file_t in quv_file_times:
-            # Assumes we are calculating over the full longitude span for the given latitudes
+            # Assumes calculation over the full longitude span for the given latitudes
             url = _get_MERRA2_opendap_url(AR_config, file_t)
             quv_ds_ts_full = xr.open_dataset(url)
             # Assumes MERRA-2 data is organized into daily files
@@ -88,7 +87,7 @@ def calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=Fa
         # For locally stored data, open all files simultaneously as a multi-file dataset
         quv_ds = xr.open_mfdataset(quv_flist, mask_and_scale=True)
         for i, t in enumerate(times):
-            # Assumes we are calculating over the full longitude span for either the NH or SH
+            # Assumes calculation over the full longitude span for either the NH or SH
             if calc_ll_mean_wind:
                 quv_ds_ts = quv_ds.sel(time=t,
                                        lev=AR_config['IVT_calc_plevs'],
@@ -192,7 +191,7 @@ def _get_MERRA2_opendap_url(AR_config, t):
     return url
 
 
-def write_IVT_output_file(AR_config, timestep_hrs_str, times, lats, lons, uIVT, vIVT, IVT):
+def write_IVT_output_file(AR_config, timestep_hrs, times, lats, lons, uIVT, vIVT, IVT):
     """
     Write IVT output file with metadata supplied by the AR ID configuration.
     """
@@ -231,23 +230,29 @@ def write_IVT_output_file(AR_config, timestep_hrs_str, times, lats, lons, uIVT, 
         
     t_begin_str = times[0].strftime('%Y%m%d%H%M')
     t_end_str = times[-1].strftime('%Y%m%d%H%M')
+    data_source = AR_config['data_source']
+    
+    minlat = AR_config['min_lat']
+    maxlat = AR_config['max_lat']
+    minlon = AR_config['min_lon']
+    maxlon = AR_config['max_lon']
+    lonres = AR_config['lon_res']
 
     # Include "_subset" in file name if area given by AR_config is not the entire globe, or
     #  an entire hemisphere poleward of 10 degrees latitude
-    # ** MERRA-2 only
-    if (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'IVT_'+AR_config['data_source']+'_global_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'    
-    elif (AR_config['min_lat'] == 10) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'IVT_'+AR_config['data_source']+'_NH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
-    elif (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == -10) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'IVT_'+AR_config['data_source']+'_SH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
+    if ((minlat == -90) and (maxlat == 90) and ((maxlon+lonres) - minlon == 360)):
+        fname = f'IVT_{data_source}_global_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
+    elif ((minlat == 10) and (maxlat == 90) and ((maxlon+lonres) - minlon == 360)):
+        fname = f'IVT_{data_source}_NH_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
+    elif ((minlat == -90) and (maxlat == -10) and ((maxlon+lonres) - minlon == 360)):
+        fname = f'IVT_{data_source}_SH_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
     else:
-        fname = 'IVT_'+AR_config['data_source']+'_subset_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
+        fname = f'IVT_{data_source}_subset_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
         
     IVT_ds.to_netcdf(AR_config['IVT_dir']+fname, encoding=encoding)
     
     
-def write_ll_mean_wind_output_file(AR_config, timestep_hrs_str, times, lats, lons, ll_mean_u_wind, ll_mean_v_wind):
+def write_ll_mean_wind_output_file(AR_config, timestep_hrs, times, lats, lons, ll_mean_u_wind, ll_mean_v_wind):
     """
     Write 1000-700 hPa mean wind output file with metadata supplied by the
     AR ID configuration.
@@ -280,18 +285,24 @@ def write_ll_mean_wind_output_file(AR_config, timestep_hrs_str, times, lats, lon
     
     t_begin_str = times[0].strftime('%Y%m%d%H%M')
     t_end_str = times[-1].strftime('%Y%m%d%H%M')
+    data_source = AR_config['data_source']
+    
+    minlat = AR_config['min_lat']
+    maxlat = AR_config['max_lat']
+    minlon = AR_config['min_lon']
+    maxlon = AR_config['max_lon']
+    lonres = AR_config['lon_res']
     
     # Include "_subset" in file name if area given by AR_config is not the entire globe, or
     #  an entire hemisphere poleward of 10 degrees latitude
-    # ** MERRA-2 only
-    if (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_global_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
-    elif (AR_config['min_lat'] == 10) and (AR_config['max_lat'] == 90) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_NH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'        
-    elif (AR_config['min_lat'] == -90) and (AR_config['max_lat'] == -10) and (AR_config['min_lon'] == -180) and (AR_config['max_lon'] == 179.375):
-        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_SH_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'        
+    if ((minlat == -90) and (maxlat == 90) and ((maxlon+lonres) - minlon == 360)):
+        fname = f'mean_wind_1000_700_hPa_{data_source}_global_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
+    elif ((minlat == 10) and (maxlat == 90) and ((maxlon+lonres) - minlon == 360)):
+        fname = f'mean_wind_1000_700_hPa_{data_source}_NH_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
+    elif ((minlat == -90) and (maxlat == -10) and ((maxlon+lonres) - minlon == 360)):
+        fname = f'mean_wind_1000_700_hPa_{data_source}_SH_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
     else:
-        fname = 'mean_wind_1000_700_hPa_'+AR_config['data_source']+'_subset_'+timestep_hrs_str+'hr_'+t_begin_str+'_'+t_end_str+'.nc'
+        fname = f'mean_wind_1000_700_hPa_{data_source}_subset_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
         
     ll_mean_wind_ds.to_netcdf(AR_config['wind_1000_700_mean_dir']+fname, encoding=encoding)
 
@@ -304,14 +315,14 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('begin_time', help='Begin time in the format YYYY-MM-DD_HHMM')
     parser.add_argument('end_time', help='End time in the format YYYY-MM-DD_HHMM')
-    parser.add_argument('timestep', help='Timestep as integer number of hours (e.g. 3)')
+    parser.add_argument('timestep_hrs', help='Timestep as integer number of hours (e.g. 3)')
     args = parser.parse_args()
     
-    return args.begin_time, args.end_time, args.timestep
+    return args.begin_time, args.end_time, args.timestep_hrs
 
 
 if __name__ == '__main__':
-    begin_t_str, end_t_str, timestep_hrs_str = parse_args()
+    begin_time, end_time, timestep_hrs = parse_args()
         
     _code_dir = os.path.dirname(os.path.realpath(__file__))
     AR_ID_config_path = _code_dir+'/AR_ID_config.hjson'
@@ -325,11 +336,11 @@ if __name__ == '__main__':
         
     if AR_config['IVT_vert_coord'] == 'pressure_levels':
         times, lats, lons, uIVT, vIVT, IVT, ll_mean_u_wind, ll_mean_v_wind = \
-            calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=use_opendap,
+            calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=use_opendap,
                      calc_ll_mean_wind=True)
-        write_ll_mean_wind_output_file(AR_config, timestep_hrs_str, times, lats, lons, ll_mean_u_wind, ll_mean_v_wind)
+        write_ll_mean_wind_output_file(AR_config, timestep_hrs, times, lats, lons, ll_mean_u_wind, ll_mean_v_wind)
     elif AR_config['IVT_vert_coord'] == 'model_levels':
         times, lats, lons, uIVT, vIVT, IVT = \
-            calc_IVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str, use_opendap=use_opendap)
+            calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=use_opendap)
 
-    write_IVT_output_file(AR_config, timestep_hrs_str, times, lats, lons, uIVT, vIVT, IVT)
+    write_IVT_output_file(AR_config, timestep_hrs, times, lats, lons, uIVT, vIVT, IVT)

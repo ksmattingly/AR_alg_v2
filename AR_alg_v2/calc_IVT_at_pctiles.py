@@ -31,9 +31,9 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
     if 'longitude' in IVT_ds_full.coords:
         IVT_ds_full = IVT_ds_full.rename({'longitude':'lon'})
     
-    begin_t = dt.datetime(int(start_year), 1, 1, 0)
-    end_t = dt.datetime(int(end_year), 12, 31, 21)
-    times = pd.date_range(begin_t, end_t, freq=timestep_hrs+'H')
+    begin_dt = dt.datetime(int(start_year), 1, 1, 0)
+    end_dt = dt.datetime(int(end_year), 12, 31, 21)
+    times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')
     
     lats_subset = np.arange(AR_config['min_lat'], AR_config['max_lat']+AR_config['lat_res'], AR_config['lat_res'])
     lons_subset = np.arange(AR_config['min_lon'], AR_config['max_lon']+AR_config['lon_res'], AR_config['lon_res'])
@@ -144,12 +144,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('start_year', help='Start year for IVT climatology (e.g. 1980)')
     parser.add_argument('end_year', help='End year for IVT climatology (e.g. 2020)')
-    parser.add_argument('timestep', help='Timestep for IVT climatology as integer number of hours (e.g. 3)')
+    parser.add_argument('timestep_hrs', help='Timestep for IVT climatology as integer number of hours (e.g. 3)')
     parser.add_argument('start_doy', help='Day of year (1-365) at which to start calculations')
     parser.add_argument('end_doy', help='Day of year (1-365) at which to end calculations')
     args = parser.parse_args()
     
-    return args.start_year, args.end_year, args.timestep, args.start_doy, args.end_doy
+    return args.start_year, args.end_year, args.timestep_hrs, args.start_doy, args.end_doy
 
 
 if __name__ == '__main__':    
