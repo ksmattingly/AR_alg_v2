@@ -7,12 +7,10 @@ import numpy as np
 import datetime as dt
 import glob
 import warnings
+from scipy import constants
 
 from AR_alg_v2.misc_utils import rename_coords
 
-warnings.simplefilter('ignore', category=RuntimeWarning)
-
-g = 9.80665
 
 def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
              calc_ll_mean_wind=False, netrc_path='/home/kmattingly/.netrc'):
@@ -119,8 +117,8 @@ def _IVT_calc_model_levs(quv_ds_ts):
     - Possibly add a dictionary with variable names in the AR_ID_config.hjson   
     """
     
-    uIVT_ts = np.nansum(quv_ds_ts['U']*quv_ds_ts['QV']*quv_ds_ts['DELP'], axis=0)/g
-    vIVT_ts = np.nansum(quv_ds_ts['V']*quv_ds_ts['QV']*quv_ds_ts['DELP'], axis=0)/g
+    uIVT_ts = np.nansum(quv_ds_ts['U']*quv_ds_ts['QV']*quv_ds_ts['DELP'], axis=0)/constants.g
+    vIVT_ts = np.nansum(quv_ds_ts['V']*quv_ds_ts['QV']*quv_ds_ts['DELP'], axis=0)/constants.g
     
     IVT_ts = np.sqrt((uIVT_ts**2) + (vIVT_ts**2))
     
@@ -142,8 +140,8 @@ def _IVT_ll_mean_wind_calc_pres_levs(quv_ds_ts):
     delp = [(plevs[i+1] - plevs[i])*-100 for i in range(len(plevs) - 1)]
     delp.append(5000.0)
 
-    uIVT_ts = np.nansum(quv_ds_ts['U']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis], axis=0)/g
-    vIVT_ts = np.nansum(quv_ds_ts['V']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis], axis=0)/g
+    uIVT_ts = np.nansum(quv_ds_ts['U']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis], axis=0)/constants.g
+    vIVT_ts = np.nansum(quv_ds_ts['V']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis], axis=0)/constants.g
     
     # Assumes pressure levels are incremented every 25 hPa from 1000 to 700 hPa
     ll_mean_u_wind_ts = np.nanmean(quv_ds_ts['U'][:13], axis=0)
@@ -324,6 +322,8 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    warnings.simplefilter('ignore', category=RuntimeWarning)
+    
     begin_time, end_time, timestep_hrs = parse_args()
         
     _code_dir = os.path.dirname(os.path.realpath(__file__))
