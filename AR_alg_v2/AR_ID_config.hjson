@@ -146,7 +146,7 @@ IVT_thresh: 150
 # Minimum IVT percentile rank threshold for a feature to potentially be considered an AR
 # - v1 default value for Northern Hemisphere: 85
 # - Options for IVT PR threshold are limited to the values that were output by "calc_IVT_at_pctiles" function in calc_IVT_at_pctiles.py
-# - As of 2022-09-27, these values are: [75,80,85,90,95,99]
+#   - As of 2022-09-27, these values are: [75,80,85,90,95,99]
 # - Note that as of 2022-09-27 the global *ERA5* IVT PR file, created by stitching together data from 6 spatial chunks, 
 #   will only contain IVT at percentile 85. (To use any other percentiles as the minimum threshold for ERA5, the chunk files
 #   for that percentile will need to be stitched together into a global file.)

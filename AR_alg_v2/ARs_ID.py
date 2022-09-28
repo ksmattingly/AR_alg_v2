@@ -51,24 +51,28 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
     for i,t in enumerate(times):
         doy = t.timetuple().tm_yday
         
-        # Build "wrap" arrays that encircle the entire zonal width of the earth twice
+        # Build "wrap" arrays that encircle the entire zonal width of the earth *twice*
+        # - label_array_prelim may contain potential AR features near the poles that wrap
+        #   around the entire globe *twice*; these features are removed in the
+        #   label_array returned from filter_duplicate_features
         if AR_config['direction_filter_type'] == 'mean_wind_1000_700_hPa':
-            labels_prelim, label_array, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
-                build_wrap_arrays(AR_config,
-                                  IVT_ds_domain.sel(time=t),
-                                  IVT_at_pctiles_ds_domain.sel(doy=doy),
-                                  ll_mean_wind_ds=ll_mean_wind_ds_domain.sel(time=t))
+            label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
+                 build_wrap_arrays(AR_config,
+                                   IVT_ds_domain.sel(time=t),
+                                   IVT_at_pctiles_ds_domain.sel(doy=doy),
+                                   ll_mean_wind_ds=ll_mean_wind_ds_domain.sel(time=t))
+
         else:
-            labels_prelim, label_array, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
+            label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
                 build_wrap_arrays(AR_config,
                                   IVT_ds_domain.sel(time=t),
                                   IVT_at_pctiles_ds_domain.sel(doy=doy))
-        
+
         # Filter potential AR features to a set of unique features that are not
         # duplicated across both "halves" of the "wrap" array, and apply AR screening
         # criteria to determine which are ARs
-        feature_props_df = filter_duplicate_features(labels_prelim, label_array, IVT_wrap,
-                                                     lons_wrap, IVT_ds_domain.lat.data)
+        label_array, feature_props_df = filter_duplicate_features(label_array_prelim, IVT_wrap,
+                                                                  lons_wrap, IVT_ds_domain.lat.data)
         AR_labels_timestep, AR_count_timestep = \
             apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                               label_array, u_wrap, v_wrap, 
@@ -106,7 +110,7 @@ def calc_grid_cell_areas_by_lat(AR_config):
     """
     Create data frame to look up grid cell areas based on latitude.
     """
-
+    
     lat_res = AR_config['lat_res']
     lon_res = AR_config['lon_res']
     
@@ -179,7 +183,9 @@ def load_input_datasets(AR_config, begin_dt, end_dt, ll_mean_wind=False):
     
 def _sift_fpaths(AR_config, data_dir, begin_dt, end_dt):
     """
-    Reduce input file paths to only those from the years from the window defined by
+    Helper to load_input_datasets.
+    
+    Reduce input file paths to only those from the years of the window defined by
     the begin and end time passed to the script. This makes reading in the xarray
     multi-file dataset quicker. 
     - (If the range from begin_dt to end_dt doesn't cover an exact full year, there
@@ -189,6 +195,7 @@ def _sift_fpaths(AR_config, data_dir, begin_dt, end_dt):
     File names must end with "...[startdate]_[enddate].nc", in the format given in the
     AR config (default used for MERRA-2 and ERA5 files is '%Y%m%d%H%M').
     """
+    
     analysis_yrs = np.arange(begin_dt.year, end_dt.year + 1, 1)
     fpaths_all = glob.glob(data_dir+'*.nc')
     fpaths = []
@@ -204,6 +211,8 @@ def _sift_fpaths(AR_config, data_dir, begin_dt, end_dt):
 
 def _rename_coords(ds):
     """
+    Helper to load_input_datasets.
+    
     Make sure latitude and longitude in xarray dataset are named "lat" and "lon",
     so that these coordinate names can be used to subset data.
     
@@ -211,6 +220,7 @@ def _rename_coords(ds):
     MERRA-2 files have "lat" and "lon". This may need to be adapted for any
     other data sources.)
     """
+    
     if ('lat' in ds.coords) and ('lon' in ds.coords):
         pass
     else:
@@ -237,6 +247,7 @@ def build_wrap_arrays(AR_config, IVT_ds, IVT_at_pctiles_ds,
     After creating the label arrays, filter out features that wrap zonally around
     the entire hemisphere.
     """
+    
     lons_wrap = np.concatenate((IVT_ds.lon, IVT_ds.lon))
     
     IVT = IVT_ds.IVT
@@ -254,11 +265,7 @@ def build_wrap_arrays(AR_config, IVT_ds, IVT_at_pctiles_ds,
     
     # Assign a unique label to each contiguous area where the threshold is met
     # - These contiguous areas are referred to as "features" throughout this script
-    label_array, num_labels = ndimage.measurements.label(thresh_array_wrap)
-    labels_prelim = np.unique(label_array)
-    
-    # Apply correction for entire-hemisphere-wrapping features
-    label_array = _correct_full_zonal_wraps(label_array, labels_prelim, IVT_ds)
+    label_array_prelim, num_labels = ndimage.measurements.label(thresh_array_wrap)
 
     if ll_mean_wind_ds:
         u_wrap = np.concatenate((ll_mean_wind_ds.u, ll_mean_wind_ds.u), axis=1)
@@ -267,53 +274,39 @@ def build_wrap_arrays(AR_config, IVT_ds, IVT_at_pctiles_ds,
         u_wrap = np.concatenate((IVT_ds.uIVT, IVT_ds.uIVT), axis=1)
         v_wrap = np.concatenate((IVT_ds.vIVT, IVT_ds.vIVT), axis=1)
 
-    return labels_prelim, label_array, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap
-
-def _correct_full_zonal_wraps(label_array, labels_prelim, IVT_ds):
-    """
-    Check if any of the labeled features wrap zonally around the entire hemisphere
-    (common near the North Pole; not sure about South Pole). If so, change the
-    label array values to 0 for the second "wrap" of the array so that the entire
-    720-degree feature in the "double wrapped" label array is not labeled as
-    one feature.
-    """
-    
-    for label in labels_prelim:
-        binary_array_label = np.where((label_array == label), 1, 0)
-    
-        for lat_ix in range(IVT_ds.lat.shape[0]):
-            if np.sum(binary_array_label[lat_ix,:]) == IVT_ds.lon.shape[0]*2:
-                # Make label array in second wrap equal to 0
-                label_array_replace_ixs_full = np.where(label_array == label)
-                label_array_second_wrap_ixs = \
-                    np.where(label_array_replace_ixs_full[1] >= IVT_ds.lon.shape[0])
-                label_array_replace_ixs_second_wrap = \
-                    (label_array_replace_ixs_full[0][label_array_second_wrap_ixs], \
-                     label_array_replace_ixs_full[1][label_array_second_wrap_ixs])
-                label_array[label_array_replace_ixs_second_wrap] = 0
-                break
-            else:
-                pass
-    
-    return label_array
+    return label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap
 
 
-def filter_duplicate_features(labels_prelim, label_array, IVT_wrap, lons_wrap, lats):
+def filter_duplicate_features(label_array_prelim, IVT_wrap, lons_wrap, lats):
     """
-    Apply two tests to ensure that potential AR features are not duplicated:
-    (1) Check if mean IVT is exactly the same within any two features. (Indicating
+    Apply three tests to ensure that potential AR features in "wrap array" are not
+    duplicated across the two globe-encircling "halves" of the "wrap array":
+    (1) Check if any of the labeled features wrap zonally around the entire hemisphere
+        (common near the North Pole; not sure about South Pole). If so, change the
+        label array values to 0 for the second "wrap" of the array so that the entire
+        720-degree feature in the "double wrapped" label array is not labeled as
+        one feature.
+    (2) Check if mean IVT is exactly the same within any two features. (Indicating
         that the same feature is present in both "halves" of the "wrap" array spanning
         the hemisphere twice.)
-    (2) Check if any lat/lon points within each feature are found within any other
+    (3) Check if any lat/lon points within each feature are found within any other
         feature. (Indicating an antimeridian-spanning feature located along the 
         "left or right edge" of the "wrap" array, which should be deleted in favor
         of processing the feature that spans the antimeridian in the "middle" of
-        the "wrap" array. This is accomplished by retaining the larger feature
+        the "wrap" array. This is accomplished by retaining the largest feature
         when features overlap.)
+        
+    Return:
+    - label_array with potential AR features that wrap zonally around the entire
+      hemisphere filtered out
+    - A data frame with attributes of potential AR features that are not
+      duplicated across both "halves" of the "wrap array", and haven't yet been
+      filtered into the *final* AR features by the direction, size, and shape criteria.
     """
     
-    feature_props_IVT = regionprops(label_array, intensity_image=IVT_wrap)
+    label_array, labels_prelim = _full_zonal_wraps_filter(label_array_prelim, lons_wrap, lats)
     
+    feature_props_IVT = regionprops(label_array, intensity_image=IVT_wrap)
     # Create pandas data frame containing:
     # (1) the image processing "regionprops" object of each feature
     # (2) the mean IVT within each feature (derived from regionprops)
@@ -326,16 +319,52 @@ def filter_duplicate_features(labels_prelim, label_array, IVT_wrap, lons_wrap, l
     feature_props_df_IVT_filtered = _identical_IVT_filter(feature_props_df_all)    
     feature_props_df = _spatial_overlap_filter(feature_props_df_IVT_filtered, lons_wrap, lats)
     
-    return feature_props_df
+    return label_array, feature_props_df
+
+def _full_zonal_wraps_filter(label_array_prelim, lons_wrap, lats):
+    """
+    Helper to filter_duplicate_features.
+    
+    Check if any of the labeled features wrap zonally around the entire hemisphere
+    (common near the North Pole; not sure about South Pole). If so, change the
+    label array values to 0 for the second "wrap" of the array so that the entire
+    720-degree feature in the "double wrapped" label array is not labeled as
+    one feature.
+    """
+    
+    labels_prelim = np.unique(label_array_prelim)
+    for label in labels_prelim:
+        binary_array_label = np.where((label_array_prelim == label), 1, 0)
+    
+        for lat_ix in range(lats.shape[0]):
+            if np.sum(binary_array_label[lat_ix,:]) == lons_wrap.shape[0]:
+                # Make label array in second wrap equal to 0
+                label_array_replace_ixs_full = np.where(label_array_prelim == label)
+                label_array_second_wrap_ixs = \
+                    np.where(label_array_replace_ixs_full[1] >= int(lons_wrap.shape[0]/2))
+                label_array_replace_ixs_second_wrap = \
+                    (label_array_replace_ixs_full[0][label_array_second_wrap_ixs], \
+                     label_array_replace_ixs_full[1][label_array_second_wrap_ixs])
+                label_array_prelim[label_array_replace_ixs_second_wrap] = 0
+                break
+            else:
+                pass
+    # Updated label array with any duplicated hemisphere-encircling features removed
+    label_array = label_array_prelim
+    
+    return label_array, labels_prelim
 
 def _identical_IVT_filter(feature_props_df_all):
     """
+    Helper to filter_duplicate_features.
+    
     Check if mean IVT is exactly the same within any two features.
     
     If there are two or more features with exactly the same mean IVT value,
     then remove all but the *first* feature from the data frame of potential
     AR features.
     """
+    
     labels_to_remove = []
     for unique_IVT_value in feature_props_df_all.feature_mean_IVT.unique():
         df_at_value = feature_props_df_all[feature_props_df_all.feature_mean_IVT == unique_IVT_value]
@@ -354,13 +383,16 @@ def _identical_IVT_filter(feature_props_df_all):
 
 def _spatial_overlap_filter(feature_props_df_IVT_filtered, lons_wrap, lats):
     """
+    Helper to filter_duplicate_features.
+    
     Check if any lat/lon points within each feature are found within any other
     feature to filter out antimeridian-spanning features located along the 
     "left or right edge" of the "wrap" array.
     
-    When overlapping features are found, retain the larger feature to ensure that
+    When overlapping features are found, retain the largest feature to ensure that
     it is the one that spans the antimeridian in the "middle" of the "wrap" array.
     """
+    
     pts_all_features = []
     labels = []
     num_grid_cells = []
@@ -431,6 +463,7 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
     AR_labels_timestep = np.zeros(shape=(u_wrap.shape[0], int(u_wrap.shape[1]/2)))
     
     AR_count_timestep = 0
+    # Loop through all potential AR features and determine if they meet AR criteria
     for row in feature_props_df.iterrows():
         label = row[1]['label']
         feature_props = row[1]['feature_props_IVT']
@@ -472,8 +505,11 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
 
 def _calc_centroid(AR_config, feature_props, lats, lons_wrap):
     """
+    Helper to apply_AR_criteria.
+    
     Calculate feature centroid lat/lon.
     """
+    
     centroid_ixs_float = feature_props.centroid
     lat_ix = int(math.ceil(centroid_ixs_float[0])) if \
         ((math.ceil(centroid_ixs_float[0]) - centroid_ixs_float[0]) <= AR_config['lat_res']) \
@@ -487,6 +523,8 @@ def _calc_centroid(AR_config, feature_props, lats, lons_wrap):
 
 def _check_direction(AR_config, centroid, feature_array, u_wrap, v_wrap):
     """
+    Helper to apply_AR_criteria.
+    
     Filter out features with equatorward v-winds (if equatorward of v_poleward_cutoff_lat)
     and tropical/subtropical east-to-west directed moisture plumes.
     """
@@ -516,6 +554,8 @@ def _check_direction(AR_config, centroid, feature_array, u_wrap, v_wrap):
 
 def _check_length_and_shape(AR_config, grid_cell_area_df, feature_array, feature_props, lats, lons_wrap):
     """
+    Helper to apply_AR_criteria.
+    
     Filter out features that don't meet the length and length-to-width ratio
     criteria.
     """
@@ -575,6 +615,7 @@ def write_AR_labels_file(AR_config, begin_t, end_t, timestep_hrs,
     """
     Write AR labels output file, with detailed metadata supplied by AR_ID_config.hjson.
     """
+    
     # Change data types of AR labels, lats, and lons to save disk space
     ARs_ds = xr.Dataset(
         {
@@ -624,8 +665,8 @@ def write_AR_labels_file(AR_config, begin_t, end_t, timestep_hrs,
     maxlat = AR_config['max_lat']
     data_source = AR_config['data_source']
     
-    # If output data cover the 10-90 degree band in the given hemisphere, then
-    # label output file as "NH" or "SH". Otherwise, note the latitude band of
+    # If output data grid covers the 10-90 degree band in the given hemisphere,
+    # then label output file as "NH" or "SH". Otherwise, note the latitude band of
     # AR data in the file name.
     if (minlat == 10) and (maxlat == 90):
         fname = f'ARs_{data_source}_NH_{timestep_hrs}hr_{t_begin_str}_{t_end_str}.nc'
@@ -641,6 +682,7 @@ def parse_args():
     """
     Parse arguments passed to script at runtime.
     """
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('begin_time', help='Begin time in the format YYYY-MM-DD_HHMM')
     parser.add_argument('end_time', help='End time in the format YYYY-MM-DD_HHMM')
@@ -652,9 +694,10 @@ def parse_args():
     
 if __name__ == '__main__':
     """
-    Main block to control reading of inputs from command line, ingesting AR ID
+    Main block to control reading inputs from command line, ingesting AR ID
     configuration, calculating ARs, and writing AR output file.
     """
+    
     begin_time, end_time, timestep_hrs = parse_args()
     
     _code_dir = os.path.dirname(os.path.realpath(__file__))
