@@ -8,6 +8,8 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 
+from AR_alg_v2.misc_utils import rename_coords
+
 
 def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy, end_doy):
     """
@@ -18,19 +20,9 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
     IVT_paths = glob.glob(IVT_dir+'*.nc')
     years_str = [str(year) for year in np.arange(int(start_year), int(end_year)+1, 1)]
     IVT_paths_filtered = [p for p in IVT_paths if p[-15:-11] in years_str]
-    IVT_ds_full = xr.open_mfdataset(IVT_paths_filtered)
+    IVT_ds_full = rename_coords(xr.open_mfdataset(IVT_paths_filtered))
     IVT_ds_full['time'] = pd.to_datetime(IVT_ds_full.time.data)
-    
-    # Make sure latitude and longitude are named "lat" and "lon",
-    # so that these coordinate names can be used to subset data
-    # - ** Files obtained from ERA5 have coords named "latitude" and "longitude";
-    #   MERRA-2 files have "lat" and "lon". This may need to be adapted for any
-    #   other data sources
-    if 'latitude' in IVT_ds_full.coords:
-        IVT_ds_full = IVT_ds_full.rename({'latitude':'lat'})
-    if 'longitude' in IVT_ds_full.coords:
-        IVT_ds_full = IVT_ds_full.rename({'longitude':'lon'})
-    
+        
     begin_dt = dt.datetime(int(start_year), 1, 1, 0)
     end_dt = dt.datetime(int(end_year), 12, 31, 21)
     times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')

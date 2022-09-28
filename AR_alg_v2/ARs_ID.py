@@ -13,6 +13,8 @@ from skimage.measure import regionprops
 import math
 import itertools
 
+from AR_alg_v2.misc_utils import rename_coords
+
 
 def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
     """
@@ -161,12 +163,12 @@ def load_input_datasets(AR_config, begin_dt, end_dt, ll_mean_wind=False):
     """
     
     IVT_fpaths = _sift_fpaths(AR_config, AR_config['IVT_dir'], begin_dt, end_dt)
-    IVT_ds_full = _rename_coords(xr.open_mfdataset(IVT_fpaths))
+    IVT_ds_full = rename_coords(xr.open_mfdataset(IVT_fpaths))
     
     IVT_at_pctiles_fpath = glob.glob(AR_config['IVT_PR_dir']+'IVT_at_pctiles_'+\
                                      AR_config['data_source']+'_'+\
                                      AR_config['hemisphere']+'*.nc')[0]
-    IVT_at_pctiles_ds_full = _rename_coords(xr.open_dataset(IVT_at_pctiles_fpath))
+    IVT_at_pctiles_ds_full = rename_coords(xr.open_dataset(IVT_at_pctiles_fpath))
     
     # Get IVT at percentiles climatology parameters to be stored in AR output file.
     climo_start_year = str(IVT_at_pctiles_ds_full.attrs['IVT_climatology_start_year'])
@@ -175,7 +177,7 @@ def load_input_datasets(AR_config, begin_dt, end_dt, ll_mean_wind=False):
     
     if ll_mean_wind:
         ll_mean_wind_fpaths = _sift_fpaths(AR_config, AR_config['wind_1000_700_mean_dir'], begin_dt, end_dt)
-        ll_mean_wind_ds_full = _rename_coords(xr.open_mfdataset(ll_mean_wind_fpaths))
+        ll_mean_wind_ds_full = rename_coords(xr.open_mfdataset(ll_mean_wind_fpaths))
         return IVT_ds_full, IVT_at_pctiles_ds_full, climo_start_year, climo_end_year, climo_timestep, \
             ll_mean_wind_ds_full
     else:
@@ -208,28 +210,6 @@ def _sift_fpaths(AR_config, data_dir, begin_dt, end_dt):
             fpaths.append(fpath)
     
     return fpaths
-
-def _rename_coords(ds):
-    """
-    Helper to load_input_datasets.
-    
-    Make sure latitude and longitude in xarray dataset are named "lat" and "lon",
-    so that these coordinate names can be used to subset data.
-    
-    (Files obtained from ERA5 have coords named "latitude" and "longitude";
-    MERRA-2 files have "lat" and "lon". This may need to be adapted for any
-    other data sources.)
-    """
-    
-    if ('lat' in ds.coords) and ('lon' in ds.coords):
-        pass
-    else:
-        if ('latitude' in ds.coords) and ('longitude' in ds.coords):
-            ds = ds.rename({'latitude':'lat','longitude':'lon'})
-        else:
-            raise Exception('Unknown lat/lon coordinate names')
-    
-    return ds
 
 
 def build_wrap_arrays(AR_config, IVT_ds, IVT_at_pctiles_ds,

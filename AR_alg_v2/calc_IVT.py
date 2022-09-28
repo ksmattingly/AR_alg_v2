@@ -8,6 +8,8 @@ import datetime as dt
 import glob
 import warnings
 
+from AR_alg_v2.misc_utils import rename_coords
+
 warnings.simplefilter('ignore', category=RuntimeWarning)
 
 g = 9.80665
@@ -55,7 +57,7 @@ def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
         for file_t in quv_file_times:
             # Assumes calculation over the full longitude span for the given latitudes
             url = _get_MERRA2_opendap_url(AR_config, file_t)
-            quv_ds_ts_full = xr.open_dataset(url)
+            quv_ds_ts_full = rename_coords(xr.open_dataset(url))
             # Assumes MERRA-2 data is organized into daily files
             times_in_ds = times[times.to_period('1D') == file_t.strftime('%Y%m%d')]
             
@@ -85,7 +87,7 @@ def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
             quv_flist.append(quv_fname)
         
         # For locally stored data, open all files simultaneously as a multi-file dataset
-        quv_ds = xr.open_mfdataset(quv_flist, mask_and_scale=True)
+        quv_ds = rename_coords(xr.open_mfdataset(quv_flist, mask_and_scale=True))
         for i, t in enumerate(times):
             # Assumes calculation over the full longitude span for either the NH or SH
             if calc_ll_mean_wind:
