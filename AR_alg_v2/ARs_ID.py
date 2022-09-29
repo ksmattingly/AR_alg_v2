@@ -146,7 +146,7 @@ def calc_grid_cell_areas_by_lat(AR_config):
         grid_cell_areas_km2.append(approx_grid_cell_area_km2)
     
     grid_cell_area_df = DataFrame({'lat':lats, 'grid_cell_area_km2':grid_cell_areas_km2})
-    
+
     return grid_cell_area_df
 
 
@@ -298,7 +298,7 @@ def filter_duplicate_features(label_array_prelim, IVT_wrap, lons_wrap, lats):
     
     feature_props_df_IVT_filtered = _identical_IVT_filter(feature_props_df_all)    
     feature_props_df = _spatial_overlap_filter(feature_props_df_IVT_filtered, lons_wrap, lats)
-    
+
     return label_array, feature_props_df
 
 def _full_zonal_wraps_filter(label_array_prelim, lons_wrap, lats):
@@ -480,7 +480,7 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
             AR_labels_timestep[lat_ix,lon_ix] = label
 
         AR_count_timestep += 1
-    
+
     return AR_labels_timestep, AR_count_timestep
 
 def _calc_centroid_lat(feature_props, lats):
@@ -512,11 +512,11 @@ def _check_direction(AR_config, centroid_lat, feature_array, u_wrap, v_wrap):
     v_mean = np.nanmean(v_wrap[feature_ixs])
     if AR_config['hemisphere'] == 'NH':
         if np.logical_and((v_mean < AR_config['v_thresh']), 
-                          (centroid_lat < AR_config['v_poleward_cutoff_lat'])):
+                          (np.abs(centroid_lat) < np.abs(AR_config['v_poleward_cutoff_lat']))):
             vwind_equatorward_flag += 1
     elif AR_config['hemisphere'] == 'SH': 
         if np.logical_and((v_mean > AR_config['v_thresh']), 
-                          (centroid_lat > AR_config['v_poleward_cutoff_lat'])):
+                          (np.abs(centroid_lat) > np.abs(AR_config['v_poleward_cutoff_lat']))):
             vwind_equatorward_flag += 1
 
     trop_subtrop_east_west_plume_flag = 0
@@ -654,7 +654,7 @@ def write_AR_labels_file(AR_config, begin_t, end_t, timestep_hrs,
     
     ARs_ds.to_netcdf(AR_config['AR_output_dir']+fname)
 
-    
+
 def parse_args():
     """
     Parse arguments passed to script at runtime.
@@ -674,7 +674,7 @@ if __name__ == '__main__':
     Main block to control reading inputs from command line, ingesting AR ID
     configuration, calculating ARs, and writing AR output file.
     """
-    
+
     begin_time, end_time, timestep_hrs = parse_args()
     
     _code_dir = os.path.dirname(os.path.realpath(__file__))

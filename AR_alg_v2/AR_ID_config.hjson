@@ -128,7 +128,7 @@ uvIVT_precalc_files_timestep: '1M'
 wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_1000_700_hPa_mean_wind_NH_3hr_pres_levs/
 
 # Directory containing IVT at percentiles (IVT PR) files
-IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/
+IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_at_pctiles/
 
 # Directory to which output AR data will be written
 AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_model_levs/
