@@ -120,11 +120,18 @@ def calc_grid_cell_areas_by_lat(AR_config):
     grid_cell_areas_km2 = []
     
     for lat in np.arange(AR_config['min_lat'], AR_config['max_lat']+lat_res, lat_res):
-        grid_cell_min_lat = lat - (lat_res/2)
-        if lat == 90:    
-            grid_cell_max_lat = lat
-        else:
+        if AR_config['hemisphere'] == 'NH':
+            grid_cell_min_lat = lat - (lat_res/2)
+            if lat == 90:
+                grid_cell_max_lat = lat
+            else:
+                grid_cell_max_lat = lat + (lat_res/2)
+        elif AR_config['hemisphere'] == 'SH':
             grid_cell_max_lat = lat + (lat_res/2)
+            if lat == -90:
+                grid_cell_min_lat = lat
+            else:
+                grid_cell_min_lat = lat - (lat_res/2)
         
         # Calculate areas of sample "measurement" grid cells along the prime meridian
         # (grid cells areas don't vary zonally, only meridionally)
