@@ -49,9 +49,14 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
     IVT_at_pctiles_ds_domain = IVT_at_pctiles_ds_full.sel(lat=lats_subset)
     
     # Loop through all output times and add AR labels to output array
+    leap_years = np.arange(1900,2100,4)
     AR_labels = np.empty((len(times), IVT_ds_domain.lat.shape[0], IVT_ds_domain.lon.shape[0]))
     for i,t in enumerate(times):
+        # For leap years, subtract 1 from all doys after the leap day to get corrected doy
+        # (to get IVT pctile rank climatology by julian day)
         doy = t.timetuple().tm_yday
+        if (t.year in leap_years) and (doy >= 60):
+            doy = doy - 1
         
         # Build "wrap" arrays that encircle the entire zonal width of the earth *twice*
         # - label_array_prelim may contain potential AR features near the poles that wrap
