@@ -13,7 +13,7 @@ from skimage.measure import regionprops
 import math
 import itertools
 
-from AR_alg_v2.misc_utils import rename_coords
+from AR_alg_v2.misc_utils import rename_coords, rename_IVT_components
 
 
 def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
@@ -175,7 +175,7 @@ def load_input_datasets(AR_config, begin_dt, end_dt, ll_mean_wind=False):
     """
     
     IVT_fpaths = _sift_fpaths(AR_config, AR_config['IVT_dir'], begin_dt, end_dt)
-    IVT_ds_full = rename_coords(xr.open_mfdataset(IVT_fpaths))
+    IVT_ds_full = rename_IVT_components(rename_coords(xr.open_mfdataset(IVT_fpaths)))
     
     IVT_at_pctiles_fpath = glob.glob(AR_config['IVT_PR_dir']+'IVT_at_pctiles_'+\
                                      AR_config['data_source']+'_'+\
