@@ -28,6 +28,11 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
     # Calculate area of grid cells at each latitude of grid
     grid_cell_area_df = calc_grid_cell_areas_by_lat(AR_config)
     
+    # Create latitude array for subset domain
+    lats_subset = np.arange(AR_config['min_lat'], 
+                            AR_config['max_lat']+AR_config['lat_res'], 
+                            AR_config['lat_res'])
+    
     # Create list of output data times
     begin_dt = dt.datetime.strptime(begin_time, '%Y-%m-%d_%H%M')
     end_dt = dt.datetime.strptime(end_time, '%Y-%m-%d_%H%M')
@@ -35,11 +40,6 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
 
     # Build indexing data frame with input file names, times, and time indices
     ix_df = build_input_file_indexing_df(AR_config, times, ll_mean_wind=False)
-
-    # Create latitude array for subset domain
-    lats_subset = np.arange(AR_config['min_lat'], 
-                            AR_config['max_lat']+AR_config['lat_res'], 
-                            AR_config['lat_res'])
 
     # Load IVT percentile rank dataset; also use this dataset to get lats, lons,
     # and IVT climatology info (start year, end year, timestep in hrs)
@@ -69,11 +69,11 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
         
         # Build "wrap" arrays that span the width of the globe twice
         if AR_config['direction_filter_type'] == 'mean_wind_1000_700_hPa':
-            label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
-                 build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll_mean_wind=True)
+            ll_mean_wind = True
         else:
-            label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
-                 build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy)
+            ll_mean_wind = False
+        label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
+            build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll_mean_wind)
 
         # Filter potential AR features to a set of unique features that are not
         # duplicated across both "halves" of the "wrap" arrays
@@ -87,7 +87,7 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
             apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                               label_array, u_wrap, v_wrap,
                               lats, lons, lons_wrap)
-        # Renumber AR feature labels - start at 1 and order features sequentially
+        # Renumber AR feature labels - start at 1 and number features sequentially
         for j, label in enumerate(np.unique(AR_labels_timestep)):
             AR_labels_timestep[np.where(AR_labels_timestep == label)] = j
         AR_labels[i::] = AR_labels_timestep
@@ -147,13 +147,13 @@ def calc_grid_cell_areas_by_lat(AR_config):
         grid_cell_min_lon = -(lon_res / 2)
         grid_cell_max_lon = (lon_res / 2)
         
-        grid_cell_width_meas_pt_w = (lat, grid_cell_min_lon)
-        grid_cell_width_meas_pt_e = (lat, grid_cell_max_lon)
-        grid_cell_hgt_meas_pt_s = (grid_cell_min_lat, 0)
-        grid_cell_hgt_meas_pt_n = (grid_cell_max_lat, 0)
+        width_meas_pt_w = (lat, grid_cell_min_lon)
+        width_meas_pt_e = (lat, grid_cell_max_lon)
+        hgt_meas_pt_s = (grid_cell_min_lat, 0)
+        hgt_meas_pt_n = (grid_cell_max_lat, 0)
         
-        approx_grid_cell_width_m = great_circle(grid_cell_width_meas_pt_w, grid_cell_width_meas_pt_e).meters
-        approx_grid_cell_hgt_m = great_circle(grid_cell_hgt_meas_pt_s, grid_cell_hgt_meas_pt_n).meters
+        approx_grid_cell_width_m = great_circle(width_meas_pt_w, width_meas_pt_e).meters
+        approx_grid_cell_hgt_m = great_circle(hgt_meas_pt_s, hgt_meas_pt_n).meters
         approx_grid_cell_area_m2 = approx_grid_cell_width_m*approx_grid_cell_hgt_m
         
         approx_grid_cell_area_km2 = approx_grid_cell_area_m2*1e-6
@@ -235,7 +235,7 @@ def _sift_fpaths(AR_config, data_dir, begin_dt, end_dt):
     return sorted(fpaths)
 
 
-def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll_mean_wind=False):
+def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll_mean_wind):
     """
     Create "wrap arrays" that encircle the entire zonal width of the globe *twice*,
     so that features that cross the antimeridian and/or a pole can be handled
@@ -267,7 +267,7 @@ def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll
     # - These contiguous areas are referred to as "features" throughout this script
     label_array_prelim, num_labels = ndimage.label(thresh_array_wrap)
 
-    if ll_mean_wind:
+    if ll_mean_wind == True:
         ll_mean_wind_ds = rename_coords(xr.open_dataset(ix_df_t['ll_mean_wind_fpath']))\
                                         .sel(time=ix_df_t.t, lat=lats_subset)
         u_wrap = np.concatenate((ll_mean_wind_ds.u, ll_mean_wind_ds.u), axis=1)
@@ -303,9 +303,11 @@ def filter_duplicate_features(AR_config, label_array_prelim, IVT_wrap, lons_wrap
     label_array, labels_prelim = _full_zonal_wraps_filter(AR_config,
                                                           label_array_prelim, lons_wrap, lats)
     feature_props_IVT = regionprops(label_array, intensity_image=IVT_wrap)
-    # Create data frame containing:
-    # (1) the image processing "regionprops" object of each feature
-    # (2) the mean IVT within each feature (derived from regionprops)
+    # Create data frame containing info on each feature:
+    # - feature label
+    # - the feature's image processing "regionprops" object
+    # - mean IVT within feature
+    # - feature number of grid cells
     feature_props_df = DataFrame({
         'label':labels_prelim[1:],
         'feature_props_IVT':feature_props_IVT,
@@ -560,13 +562,6 @@ def _check_length_and_shape(AR_config, grid_cell_area_df, feature_array, feature
     length_and_shape_flags = length_flag + length_width_ratio_flag
     
     return length_and_shape_flags
-
-
-def renumber_AR_labels(AR_labels_timestep):
-    """    
-    """
-    
-    
     
 
 def write_AR_labels_file(AR_config, begin_t, end_t, timestep_hrs,
