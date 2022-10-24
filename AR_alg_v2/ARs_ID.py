@@ -73,7 +73,7 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
                  build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll_mean_wind=True)
         else:
             label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
-                 build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy)        
+                 build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy)
 
         # Filter potential AR features to a set of unique features that are not
         # duplicated across both "halves" of the "wrap" arrays
@@ -86,7 +86,8 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
         AR_labels_timestep, AR_count_timestep = \
             apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                               label_array, u_wrap, v_wrap,
-                              lats, lons, lons_wrap)        
+                              lats, lons, lons_wrap)
+            
         AR_labels[i::] = AR_labels_timestep
         
         now_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -245,7 +246,7 @@ def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll
     """
     
     IVT_ds = rename_IVT_components(rename_coords(xr.open_dataset(ix_df_t['IVT_fpath'])))\
-             .sel(time=ix_df_t.t, lat=lats_subset)
+                                   .sel(time=ix_df_t.t, lat=lats_subset)
     lons_wrap = np.concatenate((IVT_ds.lon, IVT_ds.lon))
     IVT = IVT_ds.IVT
     IVT_wrap = np.concatenate((IVT, IVT), axis=1)
@@ -266,7 +267,7 @@ def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll
 
     if ll_mean_wind:
         ll_mean_wind_ds = rename_coords(xr.open_dataset(ix_df_t['ll_mean_wind_fpath']))\
-                          .sel(time=ix_df_t.t, lat=lats_subset)
+                                        .sel(time=ix_df_t.t, lat=lats_subset)
         u_wrap = np.concatenate((ll_mean_wind_ds.u, ll_mean_wind_ds.u), axis=1)
         v_wrap = np.concatenate((ll_mean_wind_ds.v, ll_mean_wind_ds.v), axis=1)
     else:
@@ -278,7 +279,7 @@ def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll
 
 def filter_duplicate_features(AR_config, label_array_prelim, IVT_wrap, lons_wrap, lats):
     """
-    Apply three tests to ensure that potential AR features in "wrap array" are not
+    Apply two tests to ensure that potential AR features in "wrap array" are not
     duplicated across the two globe-encircling "halves" of the "wrap array":
     (1) Check if any of the labeled features wrap zonally around the entire hemisphere
         (common near the North Pole; not sure about South Pole). If so, change the
@@ -288,12 +289,6 @@ def filter_duplicate_features(AR_config, label_array_prelim, IVT_wrap, lons_wrap
     (2) Check if mean IVT is exactly the same within any two features. (Indicating
         that the same feature is present in both "halves" of the "wrap" array spanning
         the hemisphere twice.)
-    (3) Check if any lat/lon points within each feature are found within any other
-        feature. (Indicating an antimeridian-spanning feature located along the 
-        "left or right edge" of the "wrap" array, which should be deleted in favor
-        of processing the feature that spans the antimeridian in the "middle" of
-        the "wrap" array. This is accomplished by retaining the largest feature
-        when features overlap.)
         
     Return:
     - label_array with potential AR features that wrap zonally around the entire
@@ -312,14 +307,13 @@ def filter_duplicate_features(AR_config, label_array_prelim, IVT_wrap, lons_wrap
     feature_props_df = DataFrame({
         'label':labels_prelim[1:],
         'feature_props_IVT':feature_props_IVT,
-        'feature_mean_IVT':[feature.mean_intensity for feature in feature_props_IVT]
+        'feature_mean_IVT':[feature.mean_intensity for feature in feature_props_IVT],
+        'feature_num_grid_cells':[len(feature.coords) for feature in feature_props_IVT]
         })
     
     feature_props_df_IVT_filtered = _identical_IVT_filter(feature_props_df)    
-    feature_props_df_overlap_filtered = _spatial_overlap_filter(AR_config,
-                                           feature_props_df_IVT_filtered, lons_wrap, lats)
 
-    return label_array, feature_props_df_overlap_filtered
+    return label_array, feature_props_df_IVT_filtered
 
 def _full_zonal_wraps_filter(AR_config,
                              label_array_prelim, lons_wrap, lats):
@@ -384,71 +378,6 @@ def _identical_IVT_filter(feature_props_df):
 
     return feature_props_df_IVT_filtered
 
-def _spatial_overlap_filter(AR_config,
-                            feature_props_df, lons_wrap, lats):
-    """
-    Helper to filter_duplicate_features.
-    
-    Check if any lat/lon points within each feature are found within any other
-    feature to filter out antimeridian-spanning features located along the 
-    "left or right edge" of the "wrap" array.
-    
-    When overlapping features are found, retain the largest feature to ensure that
-    it is the one that spans the antimeridian in the "middle" of the "wrap" array.
-    """
-    
-    pts_all_large_features = []
-    labels = []
-    num_grid_cells = []
-    overlap_flags = []
-    
-    for (label, feature_props) in zip(feature_props_df.label, 
-                                      feature_props_df.feature_props_IVT):
-        feature_num_grid_cells = len(feature_props.coords)
-        # Only perform check on large features; small features will be filtered out by
-        # minimum area check in apply_AR_criteria
-        if feature_num_grid_cells >= AR_config['min_num_grid_pts']:
-            for ixs in feature_props.coords:
-                pt = (lats[ixs[0]], lons_wrap[ixs[1]])
-                if pt in pts_all_large_features:
-                    overlap_flags.append(1)
-                else:
-                    overlap_flags.append(0)
-                pts_all_large_features.append(pt)
-                labels.append(label)
-                num_grid_cells.append(feature_num_grid_cells)
-    
-    # Data frame of all large features, including information on whether large features
-    # overlap with another large feature
-    feature_pts_labels_df = DataFrame({'pt':pts_all_large_features,
-                                       'label':labels,
-                                       'num_grid_cells':num_grid_cells,
-                                       'overlap_flag':overlap_flags})
-    
-    # Determine feature labels to remove and return data frame with these features
-    # excluded
-    labels_to_remove = []
-    for row in feature_pts_labels_df.iterrows():
-        if row[1]['overlap_flag'] != 0:
-            df_at_pt = feature_pts_labels_df[feature_pts_labels_df.pt == row[1]['pt']]
-            if len(df_at_pt) > 1:
-                feature_sizes = df_at_pt.num_grid_cells.unique()
-                if all(size == feature_sizes[0] for size in feature_sizes):
-                    min_label = np.min(df_at_pt.label)
-                    labels_to_remove_pt = list(df_at_pt.label)
-                    del labels_to_remove_pt[labels_to_remove_pt.index(min_label)]
-                else:
-                    max_size = np.max(df_at_pt.num_grid_cells)
-                    df_at_pt_notmax = df_at_pt[df_at_pt.num_grid_cells != max_size]
-                    labels_to_remove_pt = df_at_pt_notmax.label.unique()
-                labels_to_remove.extend(labels_to_remove_pt)
-    
-    feature_props_df_overlap_filtered = feature_props_df.drop(\
-        feature_props_df[\
-            feature_props_df.label.isin(list(set(labels_to_remove)))].index)
-    
-    return feature_props_df_overlap_filtered
-
 
 def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                       label_array, u_wrap, v_wrap,
@@ -463,9 +392,8 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
     """
     
     # Output AR labels array. The features are translated from the "wrap" array to this
-    # array (which only spans the globe zonally once) by manually placing AR
-    # labels at the lat/lon coordinates found to be part of actual ARs in the "wrap"
-    # array.
+    # array (which only spans the globe zonally once) by manually placing AR labels
+    # at the lat/lon coordinates found to be part of actual ARs in the "wrap" array.
     AR_labels_timestep = np.zeros(shape=(u_wrap.shape[0], int(u_wrap.shape[1]/2)))
     
     AR_count_timestep = 0
@@ -473,11 +401,12 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
     for row in feature_props_df.iterrows():
         label = row[1]['label']
         feature_props = row[1]['feature_props_IVT']
+        feature_area = row[1]['feature_num_grid_cells']
         
         # Initial filter of very small features (to avoid unnecessary processing time)
         # - For this and subsequent tests, continue to the next feature in the loop
         #   if the current feature "fails" the test
-        if feature_props.area < AR_config['min_num_grid_pts']:
+        if feature_area < AR_config['min_num_grid_pts']:
             continue
         
         # Calculate feature centroid
@@ -498,12 +427,31 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
         if length_and_shape_flags > 0:
             continue
         
-        # If the feature passes all the tests, add its labeled points to AR output array            
+        # If the feature passes all the tests, check to see if it overlaps with 
+        # a pre-existing AR feature in the AR output array. 
+        # - If there is no pre-existing AR feature in the same location, add the
+        #   feature's labeled points to the AR output array.
+        # - If there is a pre-existing AR feature in the same location, retain
+        #   the label of whichever feature is larger (either the pre-existing
+        #   feature or the current feature being inspected). This has the effect
+        #   of discarding features that are on the left or right edge of the "wrap"
+        #   array, and retains features that cross the antimeridian in the center
+        #   of the "wrap" array as a single feature with the same label.
         for ixs in feature_props.coords:
             lat_ix = ixs[0]
             lon_wrap = lons_wrap[ixs[1]]
             lon_ix = np.where(lons==lon_wrap)
-            AR_labels_timestep[lat_ix,lon_ix] = label
+            
+            if AR_labels_timestep[lat_ix,lon_ix] != 0:
+                other_feature_label = AR_labels_timestep[lat_ix,lon_ix]
+                other_feature_area = list(feature_props_df[feature_props_df.label == int(other_feature_label)].\
+                                          feature_num_grid_cells)[0]
+                if feature_area > other_feature_area:
+                    AR_labels_timestep[lat_ix,lon_ix] = label
+                else:
+                    break
+            else:
+                AR_labels_timestep[lat_ix,lon_ix] = label
 
         AR_count_timestep += 1
 
