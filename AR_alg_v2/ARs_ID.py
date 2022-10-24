@@ -32,66 +32,67 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
     begin_dt = dt.datetime.strptime(begin_time, '%Y-%m-%d_%H%M')
     end_dt = dt.datetime.strptime(end_time, '%Y-%m-%d_%H%M')
     times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')
-    
-    # Load input datasets and subset to latitude range of interest
+
+    # Build indexing data frame with input file names, times, and time indices
+    ix_df = build_input_file_indexing_df(AR_config, times, ll_mean_wind=False)
+
+    # Create latitude array for subset domain
     lats_subset = np.arange(AR_config['min_lat'], 
                             AR_config['max_lat']+AR_config['lat_res'], 
                             AR_config['lat_res'])
-    if AR_config['direction_filter_type'] == 'mean_wind_1000_700_hPa':
-        IVT_ds_full, IVT_at_pctiles_ds_full, climo_start_year, climo_end_year, climo_timestep_hrs, \
-            ll_mean_wind_ds_full = \
-            load_input_datasets(AR_config, begin_dt, end_dt, ll_mean_wind=True)
-        ll_mean_wind_ds_domain = ll_mean_wind_ds_full.sel(lat=lats_subset)
-    elif AR_config['direction_filter_type'] == 'IVT':
-        IVT_ds_full, IVT_at_pctiles_ds_full, climo_start_year, climo_end_year, climo_timestep_hrs = \
-            load_input_datasets(AR_config, begin_dt, end_dt)
-    IVT_ds_domain = IVT_ds_full.sel(lat=lats_subset)
-    IVT_at_pctiles_ds_domain = IVT_at_pctiles_ds_full.sel(lat=lats_subset)
-    
+
+    # Load IVT percentile rank dataset; also use this dataset to get lats, lons,
+    # and IVT climatology info (start year, end year, timestep in hrs)
+    IVT_at_pctiles_fpath = glob.glob(AR_config['IVT_PR_dir']+'IVT_at_pctiles_'+\
+                                     AR_config['data_source']+'_'+\
+                                     AR_config['hemisphere']+'*.nc')[0]
+    IVT_at_pctiles_ds = rename_coords(xr.open_dataset(IVT_at_pctiles_fpath)).sel(lat=lats_subset)
+    lats = IVT_at_pctiles_ds.lat.data
+    lons = IVT_at_pctiles_ds.lon.data
+    climo_start_year = str(IVT_at_pctiles_ds.attrs['IVT_climatology_start_year'])
+    climo_end_year = str(IVT_at_pctiles_ds.attrs['IVT_climatology_end_year'])
+    climo_timestep_hrs = str(IVT_at_pctiles_ds.attrs['IVT_climatology_timestep_hrs'])
+        
     # Loop through all output times and add AR labels to output array
     leap_years = np.arange(1900,2100,4)
-    AR_labels = np.empty((len(times), IVT_ds_domain.lat.shape[0], IVT_ds_domain.lon.shape[0]))
+    AR_labels = np.empty((len(times), lats.shape[0], lons.shape[0]))
     for i,t in enumerate(times):
+        t_str = t.strftime('%Y-%m-%d %H:%M:%S')
+        ix_df_t = ix_df.loc[t]
+        
         # For leap years, subtract 1 from all doys after the leap day to get corrected doy
-        # (to get IVT pctile rank climatology by julian day)
+        # (for selecting IVT pctile rank climatology by julian day)
         doy = t.timetuple().tm_yday
         if (t.year in leap_years) and (doy >= 60):
             doy = doy - 1
+        IVT_at_pctiles_ds_doy = IVT_at_pctiles_ds.sel(doy=doy)
         
-        # Build "wrap" arrays that encircle the entire zonal width of the earth *twice*
-        # - label_array_prelim may contain potential AR features near the poles that wrap
-        #   around the entire globe *twice*; these features are removed in the
-        #   label_array returned from filter_duplicate_features
+        # Build "wrap" arrays that span the width of the globe twice
         if AR_config['direction_filter_type'] == 'mean_wind_1000_700_hPa':
             label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
-                 build_wrap_arrays(AR_config,
-                                   IVT_ds_domain.sel(time=t),
-                                   IVT_at_pctiles_ds_domain.sel(doy=doy),
-                                   ll_mean_wind_ds=ll_mean_wind_ds_domain.sel(time=t))
-
+                 build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll_mean_wind=True)
         else:
             label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap = \
-                build_wrap_arrays(AR_config,
-                                  IVT_ds_domain.sel(time=t),
-                                  IVT_at_pctiles_ds_domain.sel(doy=doy))
+                 build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy)        
 
         # Filter potential AR features to a set of unique features that are not
-        # duplicated across both "halves" of the "wrap" array, and apply AR screening
-        # criteria to determine which are ARs
-        label_array, feature_props_df = filter_duplicate_features(label_array_prelim, IVT_wrap,
-                                                                  lons_wrap, IVT_ds_domain.lat.data)
+        # duplicated across both "halves" of the "wrap" arrays
+        label_array, feature_props_df = filter_duplicate_features(AR_config,
+                                                                  label_array_prelim, IVT_wrap,
+                                                                  lons_wrap, lats)
+        
+        # Apply AR screening criteria to determine which features qualify as ARs,
+        # and add to AR labels output array
         AR_labels_timestep, AR_count_timestep = \
             apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
-                              label_array, u_wrap, v_wrap, 
-                              IVT_ds_domain.lat.data, IVT_ds_domain.lon.data, lons_wrap)
-        
+                              label_array, u_wrap, v_wrap,
+                              lats, lons, lons_wrap)        
         AR_labels[i::] = AR_labels_timestep
         
-        t_str = t.strftime('%Y-%m-%d %H:%M:%S')
         now_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f'Processed {t_str} at {now_str} ({AR_count_timestep} ARs)')
     
-    return AR_labels, times, IVT_ds_domain.lat.data, IVT_ds_domain.lon.data, \
+    return AR_labels, times, lats, lons, \
         climo_start_year, climo_end_year, climo_timestep_hrs
 
 
@@ -162,49 +163,56 @@ def calc_grid_cell_areas_by_lat(AR_config):
     return grid_cell_area_df
 
 
-def load_input_datasets(AR_config, begin_dt, end_dt, ll_mean_wind=False):
+def build_input_file_indexing_df(AR_config, times, ll_mean_wind=False):
     """
-    Load input files (IVT, IVT at percentiles, [and low-level mean wind if needed])
-    as xarray datasets.
+    Build data frame with file path, time, and time index for each timestep of
+    the input IVT files.
     
-    Only load input files for the year(s) covered by the range from begin_dt to
-    end_dt to save processing time.
-    
-    If lat/lon coordinates in input files are named "latitude" and "longitude",
-    rename to "lat" and "lon".
+    If ll_mean_wind is True, then the indexing information for the input low-level
+    mean wind files is also included in the data frame. Note that the time span
+    and time indexing of the low-level wind files must be *exactly* the same as
+    the IVT files.
     """
     
-    IVT_fpaths = _sift_fpaths(AR_config, AR_config['IVT_dir'], begin_dt, end_dt)
-    IVT_ds_full = rename_IVT_components(rename_coords(xr.open_mfdataset(IVT_fpaths)))
-    
-    IVT_at_pctiles_fpath = glob.glob(AR_config['IVT_PR_dir']+'IVT_at_pctiles_'+\
-                                     AR_config['data_source']+'_'+\
-                                     AR_config['hemisphere']+'*.nc')[0]
-    IVT_at_pctiles_ds_full = rename_coords(xr.open_dataset(IVT_at_pctiles_fpath))
-    
-    # Get IVT at percentiles climatology parameters to be stored in AR output file.
-    climo_start_year = str(IVT_at_pctiles_ds_full.attrs['IVT_climatology_start_year'])
-    climo_end_year = str(IVT_at_pctiles_ds_full.attrs['IVT_climatology_end_year'])
-    climo_timestep = str(IVT_at_pctiles_ds_full.attrs['IVT_climatology_timestep_hrs'])
+    IVT_fpaths = _sift_fpaths(AR_config, AR_config['IVT_dir'],
+                              times[0], times[-1])
+    IVT_fpaths_alltimes = []
+    time_ixs = []
+    file_times = []
     
     if ll_mean_wind:
-        ll_mean_wind_fpaths = _sift_fpaths(AR_config, AR_config['wind_1000_700_mean_dir'], begin_dt, end_dt)
-        ll_mean_wind_ds_full = rename_coords(xr.open_mfdataset(ll_mean_wind_fpaths))
-        return IVT_ds_full, IVT_at_pctiles_ds_full, climo_start_year, climo_end_year, climo_timestep, \
-            ll_mean_wind_ds_full
-    else:
-        return IVT_ds_full, IVT_at_pctiles_ds_full, climo_start_year, climo_end_year, climo_timestep
+        ll_mean_wind_fpaths_alltimes = []
     
+    for fpath in IVT_fpaths:
+        ds = xr.open_dataset(fpath)
+        
+        IVT_fpaths_alltimes.extend([fpath for i in range(len(ds.time))])
+        time_ixs.extend(list(np.arange(0,len(ds.time),1)))
+        file_times.extend(list(pd.to_datetime(ds.time)))
+        
+        if ll_mean_wind:
+            ll_mean_wind_fpath = AR_config['wind_1000_700_mean_dir'] + \
+                'mean_wind_1000_700_hPa' + \
+                os.path.basename(fpath).split('IVT')[1]
+            ll_mean_wind_fpaths_alltimes.extend([ll_mean_wind_fpath for i in range(len(ds.time))])
+        
+    ix_df = DataFrame({'IVT_fpath':IVT_fpaths_alltimes, 'time_ix':time_ixs, 't':file_times},
+                      index=file_times)
+    if ll_mean_wind:
+        ix_df['ll_mean_wind_fpath'] = ll_mean_wind_fpaths_alltimes
+    
+    return ix_df
+        
 def _sift_fpaths(AR_config, data_dir, begin_dt, end_dt):
     """
-    Helper to load_input_datasets.
+    Helper to build_input_file_indexing_df.
     
     Reduce input file paths to only those from the years of the window defined by
-    the begin and end time passed to the script. This makes reading in the xarray
-    multi-file dataset quicker. 
+    the begin and end time passed to the script. This makes creating the input 
+    file indexing data frame quicker. 
     - (If the range from begin_dt to end_dt doesn't cover an exact full year, there
-       will still be some timesteps included in the multi-file dataset that aren't
-       actually included in AR output file.)
+       will still be some timesteps included in the data frame that aren't
+       actually processed for the AR output file.)
     
     File names must end with "...[startdate]_[enddate].nc", in the format given in the
     AR config (default used for MERRA-2 and ERA5 files is '%Y%m%d%H%M').
@@ -221,11 +229,10 @@ def _sift_fpaths(AR_config, data_dir, begin_dt, end_dt):
         if (start_yr in analysis_yrs) or (end_yr in analysis_yrs):
             fpaths.append(fpath)
     
-    return fpaths
+    return sorted(fpaths)
 
 
-def build_wrap_arrays(AR_config, IVT_ds, IVT_at_pctiles_ds,
-                      ll_mean_wind_ds=None):
+def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll_mean_wind=False):
     """
     Create "wrap arrays" that encircle the entire zonal width of the globe *twice*,
     so that features that cross the antimeridian and/or a pole can be handled
@@ -234,32 +241,32 @@ def build_wrap_arrays(AR_config, IVT_ds, IVT_at_pctiles_ds,
     Arrays created are:
     - label arrays of unique potential AR ID "features"
     - u/v arrays used for filtering final AR objects according to AR ID criteria
-        - either u/v-IVT or low-level mean u/v-wind
-    
-    After creating the label arrays, filter out features that wrap zonally around
-    the entire hemisphere.
+      (either u/v-IVT or low-level mean u/v-wind)
     """
     
+    IVT_ds = rename_IVT_components(rename_coords(xr.open_dataset(ix_df_t['IVT_fpath'])))\
+             .sel(time=ix_df_t.t, lat=lats_subset)
     lons_wrap = np.concatenate((IVT_ds.lon, IVT_ds.lon))
-    
     IVT = IVT_ds.IVT
     IVT_wrap = np.concatenate((IVT, IVT), axis=1)
-    
-    IVT_at_thresh = IVT_at_pctiles_ds['IVT_pctile_'+str(AR_config['IVT_PR_thresh'])]
+
+    IVT_at_thresh = IVT_at_pctiles_ds_doy['IVT_pctile_'+str(AR_config['IVT_PR_thresh'])]
     IVT_at_thresh_wrap = np.concatenate((IVT_at_thresh, IVT_at_thresh), axis=1)
-    
+
     # Array containing information on whether the basic potential AR threshold
     # values are met (values are 1 if IVT > IVT threshold and IVT PR > IVT PR threshold,
     # 0 if not)
     thresh_array_wrap = np.where(np.logical_and(IVT_wrap >= AR_config['IVT_thresh'], \
                                                 IVT_wrap >= IVT_at_thresh_wrap), \
                                  1, 0)
-    
+
     # Assign a unique label to each contiguous area where the threshold is met
     # - These contiguous areas are referred to as "features" throughout this script
-    label_array_prelim, num_labels = ndimage.measurements.label(thresh_array_wrap)
+    label_array_prelim, num_labels = ndimage.label(thresh_array_wrap)
 
-    if ll_mean_wind_ds:
+    if ll_mean_wind:
+        ll_mean_wind_ds = rename_coords(xr.open_dataset(ix_df_t['ll_mean_wind_fpath']))\
+                          .sel(time=ix_df_t.t, lat=lats_subset)
         u_wrap = np.concatenate((ll_mean_wind_ds.u, ll_mean_wind_ds.u), axis=1)
         v_wrap = np.concatenate((ll_mean_wind_ds.v, ll_mean_wind_ds.v), axis=1)
     else:
@@ -267,9 +274,9 @@ def build_wrap_arrays(AR_config, IVT_ds, IVT_at_pctiles_ds,
         v_wrap = np.concatenate((IVT_ds.vIVT, IVT_ds.vIVT), axis=1)
 
     return label_array_prelim, IVT_wrap, IVT_at_thresh_wrap, u_wrap, v_wrap, lons_wrap
+    
 
-
-def filter_duplicate_features(label_array_prelim, IVT_wrap, lons_wrap, lats):
+def filter_duplicate_features(AR_config, label_array_prelim, IVT_wrap, lons_wrap, lats):
     """
     Apply three tests to ensure that potential AR features in "wrap array" are not
     duplicated across the two globe-encircling "halves" of the "wrap array":
@@ -296,24 +303,26 @@ def filter_duplicate_features(label_array_prelim, IVT_wrap, lons_wrap, lats):
       filtered into the *final* AR features by the direction, size, and shape criteria.
     """
     
-    label_array, labels_prelim = _full_zonal_wraps_filter(label_array_prelim, lons_wrap, lats)
-    
+    label_array, labels_prelim = _full_zonal_wraps_filter(AR_config,
+                                                          label_array_prelim, lons_wrap, lats)
     feature_props_IVT = regionprops(label_array, intensity_image=IVT_wrap)
-    # Create pandas data frame containing:
+    # Create data frame containing:
     # (1) the image processing "regionprops" object of each feature
     # (2) the mean IVT within each feature (derived from regionprops)
-    feature_props_df_all = DataFrame({
+    feature_props_df = DataFrame({
         'label':labels_prelim[1:],
         'feature_props_IVT':feature_props_IVT,
         'feature_mean_IVT':[feature.mean_intensity for feature in feature_props_IVT]
         })
     
-    feature_props_df_IVT_filtered = _identical_IVT_filter(feature_props_df_all)    
-    feature_props_df = _spatial_overlap_filter(feature_props_df_IVT_filtered, lons_wrap, lats)
+    feature_props_df_IVT_filtered = _identical_IVT_filter(feature_props_df)    
+    feature_props_df_overlap_filtered = _spatial_overlap_filter(AR_config,
+                                           feature_props_df_IVT_filtered, lons_wrap, lats)
 
-    return label_array, feature_props_df
+    return label_array, feature_props_df_overlap_filtered
 
-def _full_zonal_wraps_filter(label_array_prelim, lons_wrap, lats):
+def _full_zonal_wraps_filter(AR_config,
+                             label_array_prelim, lons_wrap, lats):
     """
     Helper to filter_duplicate_features.
     
@@ -327,26 +336,28 @@ def _full_zonal_wraps_filter(label_array_prelim, lons_wrap, lats):
     labels_prelim = np.unique(label_array_prelim)
     for label in labels_prelim:
         binary_array_label = np.where((label_array_prelim == label), 1, 0)
-    
-        for lat_ix in range(lats.shape[0]):
-            if np.sum(binary_array_label[lat_ix,:]) == lons_wrap.shape[0]:
-                # Make label array in second wrap equal to 0
-                label_array_replace_ixs_full = np.where(label_array_prelim == label)
-                label_array_second_wrap_ixs = \
-                    np.where(label_array_replace_ixs_full[1] >= int(lons_wrap.shape[0]/2))
-                label_array_replace_ixs_second_wrap = \
-                    (label_array_replace_ixs_full[0][label_array_second_wrap_ixs], \
-                     label_array_replace_ixs_full[1][label_array_second_wrap_ixs])
-                label_array_prelim[label_array_replace_ixs_second_wrap] = 0
-                break
-            else:
-                pass
+
+        # Only perform check on large features; small features will be filtered out by
+        # minimum area check in apply_AR_criteria
+        if np.sum(binary_array_label) >= AR_config['min_num_grid_pts']:
+            for lat_ix in range(lats.shape[0]):
+                if np.sum(binary_array_label[lat_ix,:]) == lons_wrap.shape[0]:
+                    # Make label array in second wrap equal to 0
+                    label_array_replace_ixs_full = np.where(label_array_prelim == label)
+                    label_array_second_wrap_ixs = \
+                        np.where(label_array_replace_ixs_full[1] >= int(lons_wrap.shape[0]/2))
+                    label_array_replace_ixs_second_wrap = \
+                        (label_array_replace_ixs_full[0][label_array_second_wrap_ixs], \
+                         label_array_replace_ixs_full[1][label_array_second_wrap_ixs])
+                    label_array_prelim[label_array_replace_ixs_second_wrap] = 0
+                    break
+
     # Updated label array with any duplicated hemisphere-encircling features removed
     label_array = label_array_prelim
     
     return label_array, labels_prelim
 
-def _identical_IVT_filter(feature_props_df_all):
+def _identical_IVT_filter(feature_props_df):
     """
     Helper to filter_duplicate_features.
     
@@ -358,8 +369,8 @@ def _identical_IVT_filter(feature_props_df_all):
     """
     
     labels_to_remove = []
-    for unique_IVT_value in feature_props_df_all.feature_mean_IVT.unique():
-        df_at_value = feature_props_df_all[feature_props_df_all.feature_mean_IVT == unique_IVT_value]
+    for unique_IVT_value in feature_props_df.feature_mean_IVT.unique():        
+        df_at_value = feature_props_df[feature_props_df.feature_mean_IVT == unique_IVT_value]
         if len(df_at_value) > 0:
             # Remove all but the first duplicated feature from the data frame
             min_label_at_value = np.min(df_at_value.label)
@@ -368,12 +379,13 @@ def _identical_IVT_filter(feature_props_df_all):
             labels_to_remove.extend(labels_to_remove_at_value)
     
     unique_labels_to_remove = list(set(labels_to_remove))
-    feature_props_df_IVT_filtered = feature_props_df_all.drop(\
-        feature_props_df_all[feature_props_df_all.label.isin(unique_labels_to_remove)].index)
+    feature_props_df_IVT_filtered = feature_props_df.drop(\
+        feature_props_df[feature_props_df.label.isin(unique_labels_to_remove)].index)
 
     return feature_props_df_IVT_filtered
 
-def _spatial_overlap_filter(feature_props_df_IVT_filtered, lons_wrap, lats):
+def _spatial_overlap_filter(AR_config,
+                            feature_props_df, lons_wrap, lats):
     """
     Helper to filter_duplicate_features.
     
@@ -385,31 +397,33 @@ def _spatial_overlap_filter(feature_props_df_IVT_filtered, lons_wrap, lats):
     it is the one that spans the antimeridian in the "middle" of the "wrap" array.
     """
     
-    pts_all_features = []
+    pts_all_large_features = []
     labels = []
     num_grid_cells = []
-    overlap_flag = []
+    overlap_flags = []
     
-    for (label, feature_props) in zip(feature_props_df_IVT_filtered.label, 
-                                      feature_props_df_IVT_filtered.feature_props_IVT):
+    for (label, feature_props) in zip(feature_props_df.label, 
+                                      feature_props_df.feature_props_IVT):
         feature_num_grid_cells = len(feature_props.coords)
-        for ixs in feature_props.coords:
-            pt = (lats[ixs[0]], lons_wrap[ixs[1]])
-            if pt in pts_all_features:
-                overlap_flag.append(1)
-            else:
-                overlap_flag.append(0)
-            
-            pts_all_features.append(pt)
-            labels.append(label)
-            num_grid_cells.append(feature_num_grid_cells)
+        # Only perform check on large features; small features will be filtered out by
+        # minimum area check in apply_AR_criteria
+        if feature_num_grid_cells >= AR_config['min_num_grid_pts']:
+            for ixs in feature_props.coords:
+                pt = (lats[ixs[0]], lons_wrap[ixs[1]])
+                if pt in pts_all_large_features:
+                    overlap_flags.append(1)
+                else:
+                    overlap_flags.append(0)
+                pts_all_large_features.append(pt)
+                labels.append(label)
+                num_grid_cells.append(feature_num_grid_cells)
     
-    # Data frame of *all* features, including information on whether they overlap
-    # with another feature
-    feature_pts_labels_df = DataFrame({'pt':pts_all_features,
+    # Data frame of all large features, including information on whether large features
+    # overlap with another large feature
+    feature_pts_labels_df = DataFrame({'pt':pts_all_large_features,
                                        'label':labels,
                                        'num_grid_cells':num_grid_cells,
-                                       'overlap_flag':overlap_flag})
+                                       'overlap_flag':overlap_flags})
     
     # Determine feature labels to remove and return data frame with these features
     # excluded
@@ -429,11 +443,11 @@ def _spatial_overlap_filter(feature_props_df_IVT_filtered, lons_wrap, lats):
                     labels_to_remove_pt = df_at_pt_notmax.label.unique()
                 labels_to_remove.extend(labels_to_remove_pt)
     
-    feature_props_df = feature_props_df_IVT_filtered.drop(\
-        feature_props_df_IVT_filtered[\
-            feature_props_df_IVT_filtered.label.isin(list(set(labels_to_remove)))].index)
+    feature_props_df_overlap_filtered = feature_props_df.drop(\
+        feature_props_df[\
+            feature_props_df.label.isin(list(set(labels_to_remove)))].index)
     
-    return feature_props_df
+    return feature_props_df_overlap_filtered
 
 
 def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
@@ -697,5 +711,5 @@ if __name__ == '__main__':
     AR_labels, times, lats, lons, climo_start_year, climo_end_year, climo_timestep_hrs = \
         ARs_ID(AR_config, begin_time, end_time, timestep_hrs)
     write_AR_labels_file(AR_config, begin_time, end_time, timestep_hrs,
-                         AR_labels, times, lats, lons,
-                         climo_start_year, climo_end_year, climo_timestep_hrs)
+                          AR_labels, times, lats, lons,
+                          climo_start_year, climo_end_year, climo_timestep_hrs)
