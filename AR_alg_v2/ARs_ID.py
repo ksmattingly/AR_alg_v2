@@ -87,7 +87,9 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
             apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                               label_array, u_wrap, v_wrap,
                               lats, lons, lons_wrap)
-            
+        # Renumber AR feature labels - start at 1 and order features sequentially
+        for j, label in enumerate(np.unique(AR_labels_timestep)):
+            AR_labels_timestep[np.where(AR_labels_timestep == label)] = j
         AR_labels[i::] = AR_labels_timestep
         
         now_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -558,6 +560,13 @@ def _check_length_and_shape(AR_config, grid_cell_area_df, feature_array, feature
     length_and_shape_flags = length_flag + length_width_ratio_flag
     
     return length_and_shape_flags
+
+
+def renumber_AR_labels(AR_labels_timestep):
+    """    
+    """
+    
+    
     
 
 def write_AR_labels_file(AR_config, begin_t, end_t, timestep_hrs,
