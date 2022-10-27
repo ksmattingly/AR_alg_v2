@@ -31,11 +31,13 @@ min_lat: 10
 max_lat: 90
 
 # Minimum longitude (degrees east) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# ** Note that currently, AR algorithm requires data to span the globe zonally
 # - Follow convention of input data (e.g. -180 minumum longitude for MERRA-2; ERA5 seems to often use 0 as default minimum longitude)
 # - For AR ID, input data must cover the entire zonal range of the globe (e.g. -180 to 180 or 0 to 360)
 min_lon: -180
 
 # Maximum longitude (degrees east) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# ** Note that currently, AR algorithm requires data to span the globe zonally
 # - Follow convention of input data (e.g. -180 minimum longitude for MERRA-2; ERA5 seems to use 0 as default minimum longitude)
 # - For AR ID, input data must cover the entire zonal range of the globe (e.g. -180 to 180 or 0 to 360)
 max_lon: 179.375
@@ -51,11 +53,12 @@ lat_res: 0.5
 # ----- IVT calculation parameters -----------------------------------------------------------------------------------------------
 # --------------------------------------------------------------------------------------------------------------------------------
 
-# Whether IVT was provided from reanalysis / model data set, or calculated by this package
+# Whether IVT was provided from some pre-calculated source, or calculated as part of the AR detection work flow
 # Options:
 # - calculated_during_AR_ID_processing
-# - provided_in_original_dataset
-IVT_data_origin: calculated_during_AR_ID_processing
+# - provided_in_original_dataset [e.g. IVT components provided as variables by ERA5]
+# - provided_by_ARTMIP
+IVT_data_origin: provided_by_ARTMIP
 
 # Vertical coordinate system used to calculate IVT (either pressure levels or model levels)
 # - Even if pre-calculated IVT is used for AR identification, leave this variable uncommented,
@@ -63,11 +66,12 @@ IVT_data_origin: calculated_during_AR_ID_processing
 # Options:
 # - pressure_levels
 # - model_levels
-IVT_vert_coord: model_levels
+IVT_vert_coord: pressure_levels
 
 # Pressure levels (hPa) used to calculate IVT
 # - (Ignored if IVT calculated from model level data is used)
-IVT_calc_plevs: [1000,975,950,925,900,875,850,825,800,775,750,725,700,650,600,550,500,450,400,350,300,250,200,150]
+# IVT_calc_plevs: [1000,975,950,925,900,875,850,825,800,775,750,725,700,650,600,550,500,450,400,350,300,250,200,150]
+IVT_calc_plevs: '1000-200_hPa'
 
 # Model levels (indices) used to calculate IVT
 # - (Ignored if IVT calculated from pressure level data is used)
@@ -106,20 +110,20 @@ quv_fname_date_format: '%Y%m%d'
 quv_files_timestep: '1D'
 
 # Directory containing IVT files
-IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_global_3hr_model_levs/
+IVT_dir: /run/media/kmattingly/kyle_8tb/ARTMIP_tier1/MERRA2_IVT_source_data/
 
 # String format of begin and end dates in IVT file names 
 # - Must be in python datetime strftime() format
 IVT_fname_date_format: '%Y%m%d%H%M'
 
-# File name prefix of uvIVT files (if using pre-calculated IVT components to calculate IVT and IVT at percentiles, i.e. from ERA5)
+# File name prefix of uvIVT files (if using pre-calculated IVT components to calculate IVT magnitude, i.e. from ERA5)
 uvIVT_precalc_fname_prefix: 'ERA5_uvIVT'
 
-# String format of dates in uvIVT file names (if using pre-calculated IVT components to calculate IVT and IVT at percentiles, i.e. from ERA5)
+# String format of dates in uvIVT file names (if using pre-calculated IVT components to calculate IVT magnitude, i.e. from ERA5)
 # - Must be in python datetime strftime() format
 uvIVT_precalc_fname_date_format: '%Y_%m'
 
-# Temporal span of each uvIVT file (if using pre-calculated IVT components to calculate IVT and IVT at percentiles, i.e. from ERA5)
+# Temporal span of each uvIVT file (if using pre-calculated IVT components to calculate IVT magnitude, i.e. from ERA5)
 # - Must be in pandas time series "offset alias" format, e.g. '1D' for one day, '6H' for 6 hours)
 # - See https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases
 uvIVT_precalc_files_timestep: '1M'
@@ -128,10 +132,11 @@ uvIVT_precalc_files_timestep: '1M'
 wind_1000_700_mean_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_1000_700_hPa_mean_wind_NH_3hr_pres_levs/
 
 # Directory containing IVT at percentiles (IVT PR) files
-IVT_PR_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_at_pctiles/
+IVT_PR_dir: /run/media/kmattingly/kyle_8tb/ARTMIP_tier1/MERRA2_IVT_at_pctiles/
 
 # Directory to which output AR data will be written
-AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_model_levs/
+# AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_SH_3hr_model_levs/
+AR_output_dir: /run/media/kmattingly/kyle_8tb/ARTMIP_tier1/MERRA2_ARs_NH_3hr/
 
 
 # --------------------------------------------------------------------------------------------------------------------------------
@@ -188,7 +193,7 @@ v_poleward_cutoff_lat: 66.56
 v_thresh: 0
 
 # Latitude (degrees) equatorward of which the u-wind threshold is used to filter out easterly non-AR tropical and subtropical moisture plumes
-# - v1 default value for Northern Hemisphere: 35
+# - v1 default value for NH (SH): 35 (-35)
 subtrop_bound_lat: 35
 
 # Minimum u-wind value (m/s) or uIVT value (kg/m/s) for objects equatorward of subtropical cutoff latitude
@@ -196,5 +201,8 @@ subtrop_bound_lat: 35
 # - v2 default value for uIVT (kg/m/s): 20
 # - This value should stay the same regardless of hemisphere (NH or SH)
 subtrop_u_thresh: 20
+
+# Whether to label ARs with a unique label for each separate AR feature ("unique"), or label all ARs with a value of 1 ("same_value")
+AR_labels: same_value
 
 }

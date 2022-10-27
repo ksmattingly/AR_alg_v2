@@ -321,7 +321,7 @@ def parse_args():
     return args.begin_time, args.end_time, args.timestep_hrs
 
 
-if __name__ == '__main__':
+def main():
     warnings.simplefilter('ignore', category=RuntimeWarning)
     
     begin_time, end_time, timestep_hrs = parse_args()
@@ -346,3 +346,7 @@ if __name__ == '__main__':
             calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=use_opendap)
 
     write_IVT_output_file(AR_config, timestep_hrs, times, lats, lons, uIVT, vIVT, IVT)
+
+
+if __name__ == '__main__':
+    main()

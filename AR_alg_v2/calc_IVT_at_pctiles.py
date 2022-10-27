@@ -17,7 +17,7 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
     """
     
     IVT_dir = AR_config['IVT_dir']
-    IVT_paths = glob.glob(IVT_dir+'*.nc')
+    IVT_paths = sorted(glob.glob(IVT_dir+'*.nc'))
     years_str = [str(year) for year in np.arange(int(start_year), int(end_year)+1, 1)]
     IVT_paths_filtered = [p for p in IVT_paths if p[-15:-11] in years_str]
     IVT_ds_full = rename_coords(xr.open_mfdataset(IVT_paths_filtered))
@@ -28,9 +28,10 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
     times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')
     
     lats_subset = np.arange(AR_config['min_lat'], AR_config['max_lat']+AR_config['lat_res'], AR_config['lat_res'])
-    lons_subset = np.arange(AR_config['min_lon'], AR_config['max_lon']+AR_config['lon_res'], AR_config['lon_res'])
-    IVT_ds = IVT_ds_full.IVT.sel(time=times, lat=lats_subset, lon=lons_subset)
-    
+    # lons_subset = np.arange(AR_config['min_lon'], AR_config['max_lon']+AR_config['lon_res'], AR_config['lon_res'])
+    # IVT_ds = IVT_ds_full.IVT.sel(time=times, lat=lats_subset, lon=lons_subset)
+    IVT_ds = IVT_ds_full.IVT.sel(time=times, lat=lats_subset)
+
     # For leap years, subtract 1 from all doys after the leap day to get corrected doy
     leap_years = np.arange(1900,2100,4)
     doys_fixed = []
@@ -144,7 +145,7 @@ def parse_args():
     return args.start_year, args.end_year, args.timestep_hrs, args.start_doy, args.end_doy
 
 
-if __name__ == '__main__':    
+def main():
     start_year, end_year, timestep_hrs, start_doy, end_doy = parse_args()
         
     _code_dir = os.path.dirname(os.path.realpath(__file__))
@@ -160,3 +161,7 @@ if __name__ == '__main__':
                                                                           end_doy)
     write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_hrs,
                                      doys, pctiles, lats, lons, IVT_pctiles_out_data)
+
+
+if __name__ == '__main__':
+    main()

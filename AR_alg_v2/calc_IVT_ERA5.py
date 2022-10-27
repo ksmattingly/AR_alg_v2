@@ -71,7 +71,7 @@ def parse_args():
     return args.begin_time, args.end_time, args.timestep
 
 
-if __name__ == '__main__':
+def main():
     begin_t_str, end_t_str, timestep_hrs_str = parse_args()
     
     _code_dir = os.path.dirname(os.path.realpath(__file__))
@@ -81,3 +81,7 @@ if __name__ == '__main__':
     
     uvIVT_fname, times, IVT = calc_IVT_from_uvIVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str)
     write_IVT_output_file(AR_config, timestep_hrs_str, uvIVT_fname, times, IVT)
+
+
+if __name__ == '__main__':
+    main()
