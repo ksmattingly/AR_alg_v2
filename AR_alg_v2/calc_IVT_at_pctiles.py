@@ -28,8 +28,13 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
     times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')
     
     lats_subset = np.arange(AR_config['min_lat'], AR_config['max_lat']+AR_config['lat_res'], AR_config['lat_res'])
-    # lons_subset = np.arange(AR_config['min_lon'], AR_config['max_lon']+AR_config['lon_res'], AR_config['lon_res'])
-    # IVT_ds = IVT_ds_full.IVT.sel(time=times, lat=lats_subset, lon=lons_subset)
+    lons = IVT_ds_full.lon.data[:]
+    
+    # In ARTMIP IVT source files, reading in lat/lon values results in very small
+    # decimal values for 0 degrees lat/lon. Change these lon values to 0.
+    # - Not an issue for lats because AR ID domain is set to poleward of 10N / -10S
+    lons[np.where(np.abs(lons) < 0.0001)] = 0
+    
     IVT_ds = IVT_ds_full.IVT.sel(time=times, lat=lats_subset)
 
     # For leap years, subtract 1 from all doys after the leap day to get corrected doy
@@ -67,7 +72,7 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
         
         print(f'Finished doy: {doy} at '+str(dt.datetime.now()))
 
-    return doys, pctiles, IVT_ds.lat.data, IVT_ds.lon.data, IVT_pctiles_out_data
+    return doys, pctiles, IVT_ds.lat.data[:], lons, IVT_pctiles_out_data
 
 
 def write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_hrs,

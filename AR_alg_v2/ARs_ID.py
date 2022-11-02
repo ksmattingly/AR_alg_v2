@@ -87,9 +87,14 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
             apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                               label_array, u_wrap, v_wrap,
                               lats, lons, lons_wrap)
-        # Renumber AR feature labels - start at 1 and number features sequentially
+        # Renumber AR feature labels
+        # - Either start at 1 and number features sequentially, or label all
+        #   AR features as 1 (depending on setting in AR config)
         for j, label in enumerate(np.unique(AR_labels_timestep)):
-            AR_labels_timestep[np.where(AR_labels_timestep == label)] = j
+            if AR_config['AR_labels'] == 'same_value':
+                AR_labels_timestep[np.where(AR_labels_timestep == label)] = 1
+            elif AR_config['AR_labels'] == 'unique':
+                AR_labels_timestep[np.where(AR_labels_timestep == label)] = j
         AR_labels[i::] = AR_labels_timestep
         
         now_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -250,6 +255,10 @@ def build_wrap_arrays(AR_config, lats_subset, ix_df_t, IVT_at_pctiles_ds_doy, ll
     IVT_ds = rename_IVT_components(rename_coords(xr.open_dataset(ix_df_t['IVT_fpath'])))\
                                    .sel(time=ix_df_t.t, lat=lats_subset)
     lons_wrap = np.concatenate((IVT_ds.lon, IVT_ds.lon))
+    # In ARTMIP IVT source files, reading in lat/lon values results in very small
+    # decimal values for 0 degrees lat/lon. Change these lon values to 0.
+    # - Not an issue for lats because AR ID domain is set to poleward of 10N / -10S
+    lons_wrap[np.where(np.abs(lons_wrap) < 0.0001)] = 0
     IVT = IVT_ds.IVT
     IVT_wrap = np.concatenate((IVT, IVT), axis=1)
 
@@ -441,11 +450,11 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
         #   of discarding features that are on the left or right edge of the "wrap"
         #   array, and retains features that cross the antimeridian in the center
         #   of the "wrap" array as a single feature with the same label.
-        for ixs in feature_props.coords:
+        for ixs in feature_props.coords:            
             lat_ix = ixs[0]
             lon_wrap = lons_wrap[ixs[1]]
             lon_ix = np.where(lons==lon_wrap)
-            
+                        
             if AR_labels_timestep[lat_ix,lon_ix] != 0:
                 other_feature_label = AR_labels_timestep[lat_ix,lon_ix]
                 other_feature_area = list(feature_props_df[feature_props_df.label == int(other_feature_label)].\
@@ -646,8 +655,8 @@ def parse_args():
     
     return args.begin_time, args.end_time, args.timestep_hrs
 
-    
-if __name__ == '__main__':
+
+def main():
     """
     Main block to control reading inputs from command line, ingesting AR ID
     configuration, calculating ARs, and writing AR output file.
@@ -663,5 +672,9 @@ if __name__ == '__main__':
     AR_labels, times, lats, lons, climo_start_year, climo_end_year, climo_timestep_hrs = \
         ARs_ID(AR_config, begin_time, end_time, timestep_hrs)
     write_AR_labels_file(AR_config, begin_time, end_time, timestep_hrs,
-                          AR_labels, times, lats, lons,
-                          climo_start_year, climo_end_year, climo_timestep_hrs)
+                         AR_labels, times, lats, lons,
+                         climo_start_year, climo_end_year, climo_timestep_hrs)
+
+
+if __name__ == '__main__':
+    main()
