@@ -90,11 +90,11 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
         # Renumber AR feature labels
         # - Either start at 1 and number features sequentially, or label all
         #   AR features as 1 (depending on setting in AR config)
-        for j, label in enumerate(np.unique(AR_labels_timestep)):
+        for j, label in enumerate(np.unique(AR_labels_timestep)[1:]):
             if AR_config['AR_labels'] == 'same_value':
                 AR_labels_timestep[np.where(AR_labels_timestep == label)] = 1
             elif AR_config['AR_labels'] == 'unique':
-                AR_labels_timestep[np.where(AR_labels_timestep == label)] = j
+                AR_labels_timestep[np.where(AR_labels_timestep == label)] = j + 1
         AR_labels[i::] = AR_labels_timestep
         
         now_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
