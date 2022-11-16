@@ -43,7 +43,8 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs):
 
     # Load IVT percentile rank dataset; also use this dataset to get lats, lons,
     # and IVT climatology info (start year, end year, timestep in hrs)
-    IVT_at_pctiles_fpath = glob.glob(AR_config['IVT_PR_dir']+'IVT_at_pctiles_'+\
+    IVT_at_pctiles_fpath = glob.glob(AR_config['IVT_at_pctiles_dir']+\
+                                     'IVT_at_pctiles_'+\
                                      AR_config['data_source']+'_'+\
                                      AR_config['hemisphere']+'*.nc')[0]
     IVT_at_pctiles_ds = rename_coords(xr.open_dataset(IVT_at_pctiles_fpath)).sel(lat=lats_subset)

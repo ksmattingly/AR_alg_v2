@@ -131,7 +131,7 @@ def write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_h
         fname = 'IVT_at_pctiles_'+AR_config['data_source']+\
                 f'_lat_{minlat}_{maxlat}_lon_{minlon}_{maxlon}_{timestep_hrs}hr_doys_{start_doy}_{end_doy}_{start_year}_{end_year}_climo.nc' 
     
-    IVT_at_pctiles_ds.to_netcdf(AR_config['IVT_PR_dir']+fname)
+    IVT_at_pctiles_ds.to_netcdf(AR_config['IVT_at_pctiles_dir']+fname)
 
 
 def parse_args():
