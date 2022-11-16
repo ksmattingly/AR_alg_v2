@@ -28,7 +28,9 @@ Additionally, the directory containing the project code must be included in the 
 
 ## How to run
 
-The AR identification procedure requires gridded fields of IVT magnitude, u- and v-IVT components, and IVT values at the desired climatological percentile rank threshold (default: 85th percentile) as input. Optionally, lower-tropospheric mean wind may be used in place of u- and v-IVT components for transport direction criteria. The code is somewhat flexible with regard to the time properties of input and output files (the start time, end time, and interval between timesteps in hours); for data with 6-hourly or more frequent temporal resolution, structuring the data as monthly files is recommended.
+The AR identification procedure requires gridded fields of IVT magnitude, u- and v-IVT components, and IVT values at the desired climatological percentile rank threshold (default: 85th percentile) as input. Optionally, lower-tropospheric mean wind may be used in place of u- and v-IVT components for transport direction criteria.
+
+The code is somewhat flexible with regard to the time properties of input and output files (the start time, end time, and interval between timesteps in hours); for data with 6-hourly or more frequent temporal resolution, structuring the data as monthly files is recommended.
 
 The typical work flow for producing AR data is:
 - Edit configuration options in `AR_ID_config.hjson`. These options including the input data source, data directories, input file characteristics, spatial domain and grid, IVT calculation parameters, and AR identification parameters. More details on each item can be found in the comments in the configuration file.
@@ -38,12 +40,15 @@ The typical work flow for producing AR data is:
 - Run `ARs_ID.py <begin_time> <end_time> <timestep_hrs>` to identify final AR outlines.
 
 Two important notes on running `ARs_ID.py`:
-- The AR identification code must be run separately for the northern and southern hemisphere. Minimum (maximum) latitude of NH (SH) AR output data is 10&deg;N (-10&deg;S). However, global IVT and IVT at percentiles files can be used as input to the AR algorithm.
+- The AR identification code must be run separately for the Northern and Southern Hemisphere. Minimum (maximum) latitude of NH (SH) AR output data is 10&deg;N (-10&deg;S). However, global IVT and IVT at percentiles files can be used as input to the AR algorithm.
 - The input IVT and IVT at percentiles files must span the entire globe zonally (e.g. MERRA-2 data must have longitudes extending from -180&deg;W to 179.375&deg;E).
 
 ## Contact
 
 Kyle Mattingly
+
 Space Science and Engineering Center
+
 University of Wisconsin-Madison
+
 [ksmattingly@wisc.edu](mailto:ksmattingly@wisc.edu)
