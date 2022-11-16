@@ -45,10 +45,7 @@ Two important notes on running `ARs_ID.py`:
 
 ## Contact
 
-Kyle Mattingly
-
-Space Science and Engineering Center
-
-University of Wisconsin-Madison
-
+Kyle Mattingly  
+Space Science and Engineering Center  
+University of Wisconsin-Madison  
 [ksmattingly@wisc.edu](mailto:ksmattingly@wisc.edu)
