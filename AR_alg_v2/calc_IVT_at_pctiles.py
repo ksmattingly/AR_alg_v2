@@ -7,6 +7,7 @@ from datetime import timedelta
 import xarray as xr
 import numpy as np
 import pandas as pd
+import ast
 
 from AR_alg_v2.misc_utils import rename_coords
 
@@ -49,7 +50,7 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
     IVT_ds['doy'] = xr.DataArray(doys_fixed, coords=[IVT_ds.time], dims=['time'])
     
     doys = np.arange(int(start_doy),int(end_doy)+1,1)
-    pctiles = np.array([75,80,85,90,95,99])
+    pctiles = np.array(ast.literal_eval(AR_config['IVT_percentiles_to_calc']))
     IVT_pctiles_out_data = np.empty((len(doys), len(pctiles), IVT_ds.lat.shape[0], IVT_ds.lon.shape[0]))
     
     for i, doy in enumerate(doys):

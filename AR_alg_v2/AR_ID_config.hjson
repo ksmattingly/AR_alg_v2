@@ -132,6 +132,9 @@ IVT_calc_plevs: '1000-200_hPa'
 # - If pre-calculated u/v-IVT components on model levels are used to calculate IVT (e.g. from ERA5 data), then set IVT_calc_mlevs: all
 IVT_calc_mlevs: [41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72]
 
+# The climatological percentile rank values at which IVT will be calculated
+IVT_percentiles_to_calc: [75,80,85,90,95,99]
+
 # --------------------------------------------------------------------
 # -------------------- AR identification parameters ------------------
 # --------------------------------------------------------------------
