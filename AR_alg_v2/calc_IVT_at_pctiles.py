@@ -1,3 +1,13 @@
+"""
+Calculate IVT at the climatological percentile rank values specified in the
+configuration file.
+
+The percentile ranks are calculated from the distribution of all values in a
+31-day centered window at each analysis grid cell for the times specified by
+the IVT_climatology_start_year, IVT_climatology_end_year, and
+IVT_climatology_timestep_hrs in the configuration file.
+"""
+
 import argparse
 import os
 import glob

@@ -1,3 +1,11 @@
+"""
+Identify AR outlines by applying AR criteria to fields of IVT magnitude and
+direction, and IVT at climatological percentile rank threshold.
+
+Optionally, lower-tropospheric mean wind may be used to determine transport
+direction instead of the IVT vector components.
+"""
+
 import os
 import argparse
 import hjson

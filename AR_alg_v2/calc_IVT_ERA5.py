@@ -1,3 +1,12 @@
+"""
+Functions specific to the ERA5 reanalysis to calculate integrated water vapor
+transport (IVT) vector magnitude from the u/v-IVT components provided as an
+analysis variable by ERA5.
+
+The code assumes pre-existing files containing both the u/v-IVT components, and
+adds IVT magnitude as a new variable to these files.
+"""
+
 import argparse
 import os
 import hjson

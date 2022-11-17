@@ -1,3 +1,11 @@
+"""
+Calculate integrated water vapor transport (IVT) u/v-components and vector 
+magnitude from 3D input fields of u/v-wind components and specific humidity.
+
+The input data may be on native terrain-following model levels or on fixed
+pressure levels.
+"""
+
 import argparse
 import os
 import hjson

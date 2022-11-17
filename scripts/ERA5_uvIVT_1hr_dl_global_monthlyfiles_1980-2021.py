@@ -1,5 +1,5 @@
 """
-Download ERA5 u/v-IVT data, 1-hourly resolution, global, for 1980-2022.
+Download ERA5 u/v-IVT data, 1-hourly resolution, global, for 1980-2021.
 """
 
 import cdsapi
