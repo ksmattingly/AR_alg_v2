@@ -39,7 +39,7 @@ def calc_IVT_at_pctiles(AR_config, start_year, end_year, timestep_hrs, start_doy
     IVT_ds = IVT_ds_full.IVT.sel(time=times, lat=lats_subset)
 
     # For leap years, subtract 1 from all doys after the leap day to get corrected doy
-    leap_years = np.arange(1900,2100,4)
+    leap_years = np.arange(1900, int(end_year)+1, 4)
     doys_fixed = []
     for t in pd.to_datetime(IVT_ds.time):
         doy = t.timetuple().tm_yday
@@ -141,23 +141,24 @@ def parse_args():
     """
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('start_year', help='Start year for IVT climatology (e.g. 1980)')
-    parser.add_argument('end_year', help='End year for IVT climatology (e.g. 2020)')
-    parser.add_argument('timestep_hrs', help='Timestep for IVT climatology as integer number of hours (e.g. 3)')
     parser.add_argument('start_doy', help='Day of year (1-365) at which to start calculations')
     parser.add_argument('end_doy', help='Day of year (1-365) at which to end calculations')
     args = parser.parse_args()
     
-    return args.start_year, args.end_year, args.timestep_hrs, args.start_doy, args.end_doy
+    return args.start_doy, args.end_doy
 
 
 def main():
-    start_year, end_year, timestep_hrs, start_doy, end_doy = parse_args()
+    start_doy, end_doy = parse_args()
         
     _code_dir = os.path.dirname(os.path.realpath(__file__))
     AR_ID_config_path = _code_dir+'/AR_ID_config.hjson'
     with open(AR_ID_config_path) as f:
         AR_config = hjson.loads(f.read())
+    
+    start_year = AR_config['IVT_climo_start_year']
+    end_year = AR_config['IVT_climo_end_year']
+    timestep_hrs = AR_config['IVT_climo_timestep_hrs']
     
     doys, pctiles, lats, lons, IVT_pctiles_out_data = calc_IVT_at_pctiles(AR_config,
                                                                           start_year,
@@ -165,6 +166,7 @@ def main():
                                                                           timestep_hrs,
                                                                           start_doy,
                                                                           end_doy)
+    
     write_IVT_at_pctiles_output_file(AR_config, start_year, end_year, timestep_hrs,
                                      doys, pctiles, lats, lons, IVT_pctiles_out_data)
 
