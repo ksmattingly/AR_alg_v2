@@ -19,13 +19,13 @@ data_source: MERRA2
 quv_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_quv_delp_NH_3hr_model_levs/
 
 # Directory containing IVT files
-IVT_dir: /run/media/kmattingly/kyle_8tb/ARTMIP_tier1/MERRA2_IVT_source_data/
+IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_global_3hr_model_levs/
 
 # Directory containing IVT at percentiles (IVT PR) files
-IVT_at_pctiles_dir: /run/media/kmattingly/kyle_8tb/ARTMIP_tier1/MERRA2_IVT_at_pctiles/
+IVT_at_pctiles_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_IVT_at_pctiles/
 
 # Directory to which output AR data will be written
-AR_output_dir: /run/media/kmattingly/kyle_8tb/ARTMIP_tier1/MERRA2_ARs_NH_3hr/
+AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/MERRA2_ARs_NH_3hr_model_levs/
 
 # Directory containing 1000-700 hPa mean wind files
 # - (Only necessary if direction_filter_type is mean_wind_1000_700_hPa -- see below)
@@ -110,16 +110,16 @@ lat_res: 0.5
 # Whether IVT was provided from some pre-calculated source, or calculated as part of the AR detection work flow
 # Options:
 # - calculated_during_AR_ID_processing
-# - provided_in_original_dataset [e.g. IVT components provided as variables by ERA5]
+# - provided_in_original_dataset (e.g. IVT components provided as variables by ERA5)
 # - provided_by_ARTMIP
-IVT_data_origin: provided_by_ARTMIP
+IVT_data_origin: calculated_during_AR_ID_processing
 
 # Vertical coordinate system used to calculate IVT (either pressure levels or model levels)
 # - Even if pre-calculated IVT is used for AR identification, leave this variable uncommented, since it will be included as metadata in AR output files
 # Options:
 # - pressure_levels
 # - model_levels
-IVT_vert_coord: pressure_levels
+IVT_vert_coord: model_levels
 
 # Pressure levels (hPa) used to calculate IVT
 # - (Ignored if IVT calculated from model level data is used)
@@ -140,14 +140,14 @@ IVT_calc_mlevs: [41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,
 IVT_percentiles_to_calc: [75,80,85,90,95,99]
 
 # Start year for the IVT climatology used to calculate IVT at percentiles
-IVT_climatology_start_year = 1980
+IVT_climatology_start_year: 1980
 
 # End year for the IVT climatology used to calculate IVT at percentiles
-IVT_climatology_end_year = 2020
+IVT_climatology_end_year: 2020
 
 # Timestep (in hours) of the IVT climatology used to calculate IVT at percentiles
 # - Note that a different timestep from the native timestep of the input data may be specified here
-IVT_climatology_timestep_hrs = 3
+IVT_climatology_timestep_hrs: 3
 
 # ------------------------------------------------------------
 # --------------- AR identification parameters ---------------
@@ -207,6 +207,6 @@ subtrop_bound_lat: 35
 subtrop_u_thresh: 20
 
 # Whether to label ARs with a unique label for each separate AR feature ("unique"), or label all ARs with a value of 1 ("same_value")
-AR_labels: same_value
+AR_labels: unique
 
 }
