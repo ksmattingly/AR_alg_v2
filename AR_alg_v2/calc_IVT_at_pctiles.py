@@ -156,9 +156,9 @@ def main():
     with open(AR_ID_config_path) as f:
         AR_config = hjson.loads(f.read())
     
-    start_year = AR_config['IVT_climo_start_year']
-    end_year = AR_config['IVT_climo_end_year']
-    timestep_hrs = AR_config['IVT_climo_timestep_hrs']
+    start_year = AR_config['IVT_climatology_start_year']
+    end_year = AR_config['IVT_climatology_end_year']
+    timestep_hrs = AR_config['IVT_climatology_timestep_hrs']
     
     doys, pctiles, lats, lons, IVT_pctiles_out_data = calc_IVT_at_pctiles(AR_config,
                                                                           start_year,

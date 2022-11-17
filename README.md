@@ -36,12 +36,14 @@ The typical work flow for producing AR data is:
 - Edit configuration options in `AR_ID_config.hjson`. These options including the input data source, data directories, input file characteristics, spatial domain and grid, IVT calculation parameters, and AR identification parameters. More details on each item can be found in the comments in the configuration file.
 - Run `calc_IVT.py <begin_time> <end_time> <timestep_hrs>` to calculate IVT u/v-components and vector magnitude from 3D input fields of u- & v-wind components and specific humidity.
   - Use `calc_IVT_ERA5.py` to calculate IVT magnitude from the u- and v-IVT fields provided as pre-calculated fields in ERA5.
-- Run `calc_IVT_at_percentiles.py <start_doy> <end_doy>` to calculate IVT values at the climatological percentile rank(s) specified in the configuration file (with climatology defined as the 31-day centered IVT distribution for the specified `start_year`, `end_year`, and `timestep_hrs`).
+- Run `calc_IVT_at_percentiles.py <start_doy> <end_doy>` to calculate IVT values at the climatological percentile rank(s) specified in the configuration file (with climatology defined as the grid-cell-specific 31-day centered IVT distribution for the IVT_climo_start_year, IVT_climo_end_year, and IVT_climo_timestep_hrs specified in the configuration file).
 - Run `ARs_ID.py <begin_time> <end_time> <timestep_hrs>` to identify final AR outlines.
 
 Two important notes on running `ARs_ID.py`:
 - The AR identification code must be run separately for the Northern and Southern Hemisphere. Minimum (maximum) latitude of NH (SH) AR output data is 10&deg;N (-10&deg;S). However, global input files (IVT, IVT at percentiles files) can be used by the AR algorithm.
 - The input files (IVT, IVT at percentiles) must span the entire globe zonally (e.g. MERRA-2 data, with resolution 0.5&deg; lat by 0.625&deg; lon, must have longitudes extending from -180&deg;W to 179.375&deg;E).
+
+The `scripts/` directory contains miscellaneous scripts that may be useful, including driver scripts for processing multiple years of data, downloading and chunk large ERA5 files for manageable processing, and preparing ARTMIP Tier 1 MERRA-2 IVT data for processing.
 
 ## Contact
 

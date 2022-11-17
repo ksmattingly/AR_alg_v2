@@ -1,3 +1,7 @@
+"""
+Download ERA5 u/v-IVT data, 1-hourly resolution, global, for 1980-2022.
+"""
+
 import cdsapi
 import numpy as np
 import datetime as dt

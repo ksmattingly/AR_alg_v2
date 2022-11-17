@@ -4,10 +4,6 @@ One-time script to make changes to ARTMIP netCDF files:
 - discard unused variables: surface pressure (PS) and integrated water vapor (IWV)
 - write to monthly instead of yearly files
 - change file name to match format expected by calc_IVT_at_pctiles.py and ARs_ID.py
-
-Write out new netCDF files (with time as a dimension) to a "test" directory, to
-avoid overwriting the existing ARTMIP data. Then manually copy over the new files
-and delete the old files after confirming the new files are correct.
 """
 
 import xarray as xr

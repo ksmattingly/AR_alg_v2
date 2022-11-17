@@ -1,10 +1,11 @@
-# Driver script for MERRA-2 AR ID (3-hourly) for 1980-1984
-# - Output data are divided into files spanning 1 month each
-# - Script was run on planck
-# - Only script for the "chunk" from 1980-1984 is committed to git as an example;
-#   the rest of the 1980-2021 period of record was processed by writing other
-#   scripts with different 5-year chunk begin/end dates
-# - Spatial parameters (including NH or SH domain) are specified in AR_ID_config.hjson
+"""
+Driver script for MERRA-2 AR ID (3-hourly) for 1980-1984
+- Output data are divided into files spanning 1 month each
+- Only this script for the "chunk" from 1980-1984 is included as an example; the
+  remainder of the 1980-2021 period was processed by writing other scripts with
+  different 5-year chunk begin/end dates
+- Spatial parameters (including NH or SH domain) are specified in AR_ID_config.hjson
+"""
 
 import os
 import datetime as dt

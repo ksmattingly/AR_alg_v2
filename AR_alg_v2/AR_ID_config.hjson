@@ -140,14 +140,14 @@ IVT_calc_mlevs: [41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,
 IVT_percentiles_to_calc: [75,80,85,90,95,99]
 
 # Start year for the IVT climatology used to calculate IVT at percentiles
-IVT_climo_start_year = 1980
+IVT_climatology_start_year = 1980
 
 # End year for the IVT climatology used to calculate IVT at percentiles
-IVT_climo_end_year = 2020
+IVT_climatology_end_year = 2020
 
 # Timestep (in hours) of the IVT climatology used to calculate IVT at percentiles
 # - Note that a different timestep from the native timestep of the input data may be specified here
-IVT_climo_timestep_hrs = 3
+IVT_climatology_timestep_hrs = 3
 
 # ------------------------------------------------------------
 # --------------- AR identification parameters ---------------
