@@ -151,7 +151,7 @@ def main(write_mask_file=False):
                    'ar_binary_tag':(('time','lat','lon'), ar_binary_tag.astype('byte'))
                 },
                 coords={
-                    'time':times,
+                    'time':times.astype('double'),
                     'lat':lats_global.astype('double'),
                     'lon':lons_global.astype('double')
                 }

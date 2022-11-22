@@ -17,7 +17,7 @@ for year in years:
     temp_yearly_fpath = f'{input_dir_temp}MERRA2.ar_tag.Mattingly_v2.3hourly.{year}0101_{year}1231.nc4'
     comp_yearly_fpath = f'{output_dir_comp}MERRA2.ar_tag.Mattingly_v2.3hourly.{year}0101-{year}1231.nc4'
 
-    os.system('ncks -4 -L 1 '+temp_yearly_fpath+' '+comp_yearly_fpath)
+    os.system(f'ncks -4 -L 1 {temp_yearly_fpath} {comp_yearly_fpath}')
 
     now = dt.datetime.now()
     print(f'Finished compressing {year} at {now}')
