@@ -12,6 +12,8 @@ import datetime as dt
 import pandas as pd
 import calendar
 
+config_fpath = '/home/kmattingly/projects/AR_alg_v2/config_files/AR_ID_config_MERRA2_NH.hjson'
+
 chunk_begin_t = dt.datetime(1980,1,1,0)
 chunk_end_t = dt.datetime(1984,12,31,21)
 timestep_hrs = '3'
@@ -26,4 +28,4 @@ for t_monthly in times_monthly:
     t_begin_str = t_begin.strftime('%Y-%m-%d_%H%M')
     t_end_str = t_end.strftime('%Y-%m-%d_%H%M')
     
-    os.system(f'python ../AR_alg_v2/ARs_ID.py {t_begin_str} {t_end_str} {timestep_hrs}')
+    os.system(f'python ../AR_alg_v2/ARs_ID.py {t_begin_str} {t_end_str} {timestep_hrs} {config_fpath}')

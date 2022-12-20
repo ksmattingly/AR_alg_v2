@@ -15,6 +15,8 @@ import os
 import datetime as dt
 import pandas as pd
 
+config_fpath = '/home/kmattingly/projects/AR_alg_v2/config_files/AR_ID_config_MERRA2_global_IVT_calc.hjson'
+
 begin_t = dt.datetime(1980,1,1,0)
 end_t = dt.datetime(2021,12,31,21)
 timestep_hrs = '3'
@@ -25,4 +27,4 @@ for file_t in output_file_times:
     file_begin_t = dt.datetime(file_t.year, file_t.month, 1, 0, 0).strftime('%Y-%m-%d_%H%M')
     file_end_t = dt.datetime(file_t.year, file_t.month, file_t.day, 21, 0).strftime('%Y-%m-%d_%H%M')
     
-    os.system(f'python ../AR_alg_v2/calc_IVT.py {file_begin_t} {file_end_t} {timestep_hrs}')
+    os.system(f'python ../AR_alg_v2/calc_IVT.py {file_begin_t} {file_end_t} {timestep_hrs} {config_fpath}')

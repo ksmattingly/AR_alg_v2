@@ -1,5 +1,21 @@
 {
 
+# *******************************************************************************
+
+# This file contains configuration parameters for AR identification. It is a
+# template that is intended to be modified for different datasets, hemispheres,
+# AR identification parameters, etc. 
+# 
+# Recommended usage is to create a new configuration file from this template for
+# each dataset before passing the configuration file to the IVT calculation and
+# AR processing routines. For example, to calculate IVT at percentiles and AR
+# outlines for the Northern Hemisphere from MERRA-2, save a copy of this file as 
+# "AR_ID_config_MERRA2_NH.hjson", and pass the file as an argument to the
+# "calc_IVT_at_pctiles.py" and "ARs_ID.py" scripts.
+
+# *******************************************************************************
+
+
 # ------------------------------------------------------------
 # --------------- Input data source --------------------------
 # ------------------------------------------------------------

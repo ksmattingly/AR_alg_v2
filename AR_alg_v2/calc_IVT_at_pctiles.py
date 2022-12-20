@@ -9,7 +9,6 @@ IVT_climatology_timestep_hrs in the configuration file.
 """
 
 import argparse
-import os
 import glob
 import hjson
 import datetime as dt
@@ -153,16 +152,15 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('start_doy', help='Day of year (1-365) at which to start calculations')
     parser.add_argument('end_doy', help='Day of year (1-365) at which to end calculations')
+    parser.add_argument('AR_ID_config_path', help='Path to AR ID configuration file')
     args = parser.parse_args()
     
-    return args.start_doy, args.end_doy
+    return args.start_doy, args.end_doy, args.AR_ID_config_path
 
 
 def main():
-    start_doy, end_doy = parse_args()
+    start_doy, end_doy, AR_ID_config_path = parse_args()
         
-    _code_dir = os.path.dirname(os.path.realpath(__file__))
-    AR_ID_config_path = _code_dir+'/AR_ID_config.hjson'
     with open(AR_ID_config_path) as f:
         AR_config = hjson.loads(f.read())
     

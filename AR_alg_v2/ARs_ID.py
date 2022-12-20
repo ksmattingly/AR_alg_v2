@@ -660,9 +660,10 @@ def parse_args():
     parser.add_argument('begin_time', help='Begin time in the format YYYY-MM-DD_HHMM')
     parser.add_argument('end_time', help='End time in the format YYYY-MM-DD_HHMM')
     parser.add_argument('timestep_hrs', help='Timestep as integer number of hours (e.g. 3)')
+    parser.add_argument('AR_ID_config_path', help='Path to AR ID configuration file')
     args = parser.parse_args()
     
-    return args.begin_time, args.end_time, args.timestep_hrs
+    return args.begin_time, args.end_time, args.timestep_hrs, args.AR_ID_config_path
 
 
 def main():
@@ -671,10 +672,8 @@ def main():
     configuration, calculating ARs, and writing AR output file.
     """
 
-    begin_time, end_time, timestep_hrs = parse_args()
+    begin_time, end_time, timestep_hrs, AR_ID_config_path = parse_args()
     
-    _code_dir = os.path.dirname(os.path.realpath(__file__))
-    AR_ID_config_path = _code_dir+'/AR_ID_config.hjson'
     with open(AR_ID_config_path) as f:
         AR_config = hjson.loads(f.read())
 
