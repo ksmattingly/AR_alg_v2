@@ -1,5 +1,5 @@
 """
-One-time script to make changes to ARTMIP netCDF files:
+One-time script to make changes to ARTMIP Tier 1 MERRA-2 input netCDF files:
 - encode time information that can be read by xarray
 - discard unused variables: surface pressure (PS) and integrated water vapor (IWV)
 - write to monthly instead of yearly files

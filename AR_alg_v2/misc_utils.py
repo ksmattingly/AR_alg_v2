@@ -34,6 +34,8 @@ def rename_IVT_components(ds):
     """
     
     if ('p71.162') and ('p72.162') in ds.variables:
-        ds = ds.rename({'p71.162':'uIVT','p72.162':'vIVT'})
+        ds = ds.rename({'p71.162':'uIVT', 'p72.162':'vIVT'})
+    elif ('IVTx') and ('IVTy') in ds.variables:
+        ds = ds.rename({'IVTx':'uIVT', 'IVTy':'vIVT'})
         
     return ds

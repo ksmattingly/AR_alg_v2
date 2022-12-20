@@ -1,0 +1,172 @@
+{
+
+# ***************************************************************************** #
+
+# This file contains configuration parameters for AR identification in the ARTMIP
+# Tier 2 paleo datasets. It is a template that is intended to be modified for
+# different datasets, hemispheres, AR identification parameters, etc. 
+# 
+# Recommended usage is to create a new configuration file from this template for
+# each dataset before passing the configuration file to the IVT calculation and
+# AR processing routines. For example, to calculate IVT at percentiles and AR
+# outlines from the PI_21ka-CO2 dataset, save a copy of this file as 
+# "AR_ID_config_ARTMIP_tier2_paleo_PI_21ka-CO2.hjson", and pass the file as
+# an argument to the "calc_IVT_at_pctiles_ARTMIP_tier2_paleo.py" and
+# "ARs_ID_ARTMIP_tier2_paleo.py" scripts.
+
+# ***************************************************************************** #
+
+
+# ------------------------------------------------------------
+# --------------- Input data source --------------------------
+# ------------------------------------------------------------
+
+# ARTMIP Tier 2 paleo data sources currently supported:
+# - PI_21ka-CO2
+# - 10ka-Orbital
+# - PreIndust
+data_source: PreIndust
+
+# ------------------------------------------------------------
+# --------------- Data directories ---------------------------
+# ------------------------------------------------------------
+
+# Directory containing IVT files
+IVT_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/ARTMIP_tier2_paleo/PreIndust/
+
+# Directory containing IVT at percentiles (IVT PR) files
+IVT_at_pctiles_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/ARTMIP_tier2_paleo/IVT_at_pctiles/
+
+# Directory to which output AR data will be written
+AR_output_dir: /run/media/kmattingly/kyle_8tb/AR_data_v2/ARTMIP_tier2_paleo/ARs_PreIndust/
+
+# ------------------------------------------------------------
+# --------------- Spatial domain and grid --------------------
+# ------------------------------------------------------------
+
+# Northern or Southern hemisphere (cutoff at 10N or -10S)
+# Options:
+# - NH
+# - SH
+hemisphere: NH
+
+# Minimum latitude (degrees) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - Northern Hemisphere: possible range = 10 to 90
+# - Southern Hemisphere: possible range = -90 to -10
+min_lat: 10
+
+# Maximum latitude (degrees) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - Northern Hemisphere: possible range = 10 to 90
+# - Southern Hemisphere: possible range = -90 to -10
+max_lat: 90
+
+# Minimum longitude (degrees east) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - ** For AR ID, input data must cover the entire zonal range of the globe (e.g. -180 to 180 or 0 to 360)
+min_lon: 0
+
+# Maximum longitude (degrees east) of domain over which calculations (IVT, IVT at percentiles, and/or AR ID) are performed
+# - ** For AR ID, input data must cover the entire zonal range of the globe (e.g. -180 to 180 or 0 to 360)
+max_lon: 358.75
+
+# Longitude spacing (degrees) of data source's native grid (assumes regular grid)
+lon_res: 1.25
+
+# Latitude spacing (degrees) of data source's native grid (assumes regular grid)
+lat_res: 0.9424
+
+# ------------------------------------------------------------
+# --------------- IVT calculation parameters -----------------
+# ------------------------------------------------------------
+
+# Whether IVT was provided from some pre-calculated source, or calculated as part of the AR detection work flow
+# Options:
+# - calculated_during_AR_ID_processing
+# - provided_in_original_dataset (e.g. IVT components provided as variables by ERA5)
+# - provided_by_ARTMIP
+IVT_data_origin: provided_by_ARTMIP
+
+# Vertical coordinate system used to calculate IVT (either pressure levels or model levels)
+# - Even if pre-calculated IVT is used for AR identification, leave this variable uncommented, since it will be included as metadata in AR output files
+# Options:
+# - pressure_levels
+# - model_levels
+IVT_vert_coord: pressure_levels
+
+# ------------------------------------------------------------
+# --------------- IVT percentile rank calculation parameters -
+# ------------------------------------------------------------
+
+# The climatological percentile rank values at which IVT will be calculated
+IVT_percentiles_to_calc: [75,80,85,90,95,99]
+
+# Start year for the IVT climatology used to calculate IVT at percentiles
+IVT_climatology_start_year: 121
+
+# End year for the IVT climatology used to calculate IVT at percentiles
+IVT_climatology_end_year: 150
+
+# Timestep (in hours) of the IVT climatology used to calculate IVT at percentiles
+# - Note that a different timestep from the native timestep of the input data may be specified here
+IVT_climatology_timestep_hrs: 6
+
+# ------------------------------------------------------------
+# --------------- AR identification parameters ---------------
+# ------------------------------------------------------------
+
+# Minimum IVT threshold (kg/m/s) for a feature to potentially be considered an AR
+# - v2 default value for Northern Hemisphere: 150 kg/m/s
+# - Value for past work on Antarctic ARs: 50 kg/m/s
+IVT_thresh: 150
+
+# Minimum IVT percentile rank threshold for a feature to potentially be considered an AR
+# - v2 default value for Northern Hemisphere: 85
+# - Options for IVT PR threshold are limited to the values that were output by "calc_IVT_at_pctiles" function in calc_IVT_at_pctiles.py
+IVT_PR_thresh: 85
+
+# Minimum number of grid points for filtering of potential AR objects
+# - Recommended value for MERRA-2 (0.5 lat x 0.625 lon): 150
+# - Recommended value for ERA5 (0.25 x 0.25 lat/lon) 300
+# - Note that this is not an actual criterion for AR identification, it is used only to filter out small objects from further processing for speed.
+min_num_grid_pts: 25
+
+# Minimum object length (km) to be considered an AR
+# - v2 default value: 1500
+min_length: 1500
+
+# Minimum length / width ratio to be considered an AR
+min_length_width_ratio: 1.5
+
+# Whether to use 1000-700 hPa mean u/v-wind or u/v-IVT for direction filtering criteria
+# Options:
+# - mean_wind_1000_700_hPa
+# - IVT
+# v1 default value: mean_wind_1000_700_hPa
+# v2 default value: IVT
+direction_filter_type: IVT
+
+# Latitude (degrees), poleward of which the v-direction threshold is relaxed
+# - v1 default value for Northern Hemisphere: 70. This means that features poleward of 70N are not required to have v-wind or vIVT directed poleward, in order to capture Arctic ARs that may transport moisture in an equatorward direction.
+# - v2 default value for NH (SH): 66.56N (-66.56S) -- the Arctic (Antarctic) circle
+# - To require v-wind to be poleward at *all* latitudes, set this value to 90 (Northern Hemisphere) or -90 (Southern Hemisphere) 
+v_poleward_cutoff_lat: 66.56
+
+# Minimum v-wind (m/s) or vIVT value (kg/m/s) required to be considered an AR
+# - A threshold of 0 means the direction of transport must be northward (Northern Hemisphere) / southward (Southern Hemisphere)
+# - v2 default value for Northern Hemisphere = 0
+# - If using a value other than 0, think carefully about whether the value makes sense for the hemisphere (NH or SH) in which calculations are being performed
+v_thresh: 0
+
+# Latitude (degrees) equatorward of which the u-wind threshold is used to filter out easterly non-AR tropical and subtropical moisture plumes
+# - v2 default value for NH (SH): 35 (-35)
+subtrop_bound_lat: 35
+
+# Minimum u-wind value (m/s) or uIVT value (kg/m/s) for objects equatorward of subtropical cutoff latitude
+# - v1 default value for u-wind (m/s): 2
+# - v2 default value for uIVT (kg/m/s): 20
+# - This value should stay the same regardless of hemisphere (NH or SH)
+subtrop_u_thresh: 20
+
+# Whether to label ARs with a unique label for each separate AR feature ("unique"), or label all ARs with a value of 1 ("same_value")
+AR_labels: unique
+
+}
