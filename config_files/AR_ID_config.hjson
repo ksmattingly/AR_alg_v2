@@ -73,6 +73,9 @@ quv_files_timestep: '1D'
 # - Must be in python datetime strftime() format
 IVT_fname_date_format: '%Y%m%d%H%M'
 
+# Directory containing pre-calculated uvIVT files (if using pre-calculated IVT components to calculate IVT magnitude, i.e. from ERA5)
+uvIVT_precalc_dir: '/run/media/kmattingly/kyle_8tb/AR_data_v2/ERA5_IVT/uvIVT/'
+
 # File name prefix of uvIVT files (if using pre-calculated IVT components to calculate IVT magnitude, i.e. from ERA5)
 uvIVT_precalc_fname_prefix: 'ERA5_uvIVT'
 
