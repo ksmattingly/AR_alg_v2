@@ -39,10 +39,20 @@ def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
     begin_dt = dt.datetime.strptime(begin_time, '%Y-%m-%d_%H%M')
     end_dt = dt.datetime.strptime(end_time, '%Y-%m-%d_%H%M')
     times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')
-    quv_file_times = pd.date_range(begin_dt, end_dt, freq=AR_config['quv_files_timestep'])
+    quv_file_times = pd.date_range(
+        begin_dt, end_dt, freq=AR_config['quv_files_timestep']
+        )
     
-    lats = np.arange(AR_config['min_lat'], AR_config['max_lat']+AR_config['lat_res'], AR_config['lat_res'])
-    lons = np.arange(AR_config['min_lon'], AR_config['max_lon']+AR_config['lon_res'], AR_config['lon_res'])
+    lats = np.arange(
+        AR_config['min_lat'],
+        AR_config['max_lat']+AR_config['lat_res'],
+        AR_config['lat_res']
+        )
+    lons = np.arange(
+        AR_config['min_lon'],
+        AR_config['max_lon']+AR_config['lon_res'],
+        AR_config['lon_res']
+        )
     
     # Output arrays for all timesteps that will be filled by the loop below
     uIVT = np.empty((len(times), len(lats), len(lons)))
@@ -54,7 +64,7 @@ def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
     
     # Must have opendap configuration set up (.netrc, .urs_cookies, .dodsrc) 
     # to open earthdata dataset with xarray
-    # - See https://daac.gsfc.nasa.gov/information/howto?title=How%20to%20Access%20MERRA-2%20Data%20using%20OPeNDAP%20with%20Python3%20and%20Calculate%20Daily%2FWeekly%2FMonthly%20Statistics%20from%20Hourly%20Data%20
+    # - See opendap notebook in the GES DISC how to's: https://daac.gsfc.nasa.gov/information/howto
     if use_opendap:
         i = 0
         # For remotely stored data, open each daily file in sequence and loop
@@ -68,15 +78,19 @@ def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
             
             for t in times_in_ds:
                 if calc_ll_mean_wind:
-                    quv_ds_ts = quv_ds_ts_full.sel(time=t,
-                                                   lev=AR_config['IVT_calc_plevs'],
-                                                   lat=lats)
+                    quv_ds_ts = quv_ds_ts_full.sel(
+                        time=t,
+                        lev=AR_config['IVT_calc_plevs'],
+                        lat=lats
+                        )
                     uIVT[i,:,:], vIVT[i,:,:], IVT[i,:,:], ll_mean_u_wind[i,:,:], ll_mean_v_wind[i,:,:] = \
                         _IVT_ll_mean_wind_calc_pres_levs(quv_ds_ts)
                 else:
-                    quv_ds_ts = quv_ds_ts_full.sel(time=t,
-                                                   lev=AR_config['IVT_calc_mlevs'],
-                                                   lat=lats)
+                    quv_ds_ts = quv_ds_ts_full.sel(
+                        time=t,
+                        lev=AR_config['IVT_calc_mlevs'],
+                        lat=lats
+                        )
                     uIVT[i,:,:], vIVT[i,:,:], IVT[i,:,:] = _IVT_calc_model_levs(quv_ds_ts)
                 i += 1
                 print('Finished calculating time '+str(t)+' at '+str(dt.datetime.now()))
@@ -86,9 +100,10 @@ def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
     else:
         quv_flist = []
         for t in quv_file_times:
-            quv_fname = glob.glob(AR_config['quv_dir']+\
-                                  AR_config['quv_fname_prefix']+\
-                                  '*'+t.strftime(AR_config['quv_fname_date_format'])+'*.nc')[0]
+            quv_fname = glob.glob(
+                AR_config['quv_dir']+\
+                AR_config['quv_fname_prefix']+\
+                '*'+t.strftime(AR_config['quv_fname_date_format'])+'*.nc')[0]
             quv_flist.append(quv_fname)
         
         # For locally stored data, open all files simultaneously as a multi-file dataset
@@ -96,15 +111,19 @@ def calc_IVT(AR_config, begin_time, end_time, timestep_hrs, use_opendap=False,
         for i, t in enumerate(times):
             # Assumes calculation over the full longitude span for either the NH or SH
             if calc_ll_mean_wind:
-                quv_ds_ts = quv_ds.sel(time=t,
-                                       lev=AR_config['IVT_calc_plevs'],
-                                       lat=lats)
+                quv_ds_ts = quv_ds.sel(
+                    time=t,
+                    lev=AR_config['IVT_calc_plevs'],
+                    lat=lats
+                    )
                 uIVT[i,:,:], vIVT[i,:,:], IVT[i,:,:], ll_mean_u_wind[i,:,:], ll_mean_v_wind[i,:,:] = \
                     _IVT_ll_mean_wind_calc_pres_levs(quv_ds_ts)
             else:
-                quv_ds_ts = quv_ds.sel(time=t,
-                                       lev=AR_config['IVT_calc_mlevs'],
-                                       lat=lats)
+                quv_ds_ts = quv_ds.sel(
+                    time=t,
+                    lev=AR_config['IVT_calc_mlevs'],
+                    lat=lats
+                    )
                 uIVT[i,:,:], vIVT[i,:,:], IVT[i,:,:] = _IVT_calc_model_levs(quv_ds_ts)
             print('Finished calculating time '+str(t)+' at '+str(dt.datetime.now()))
             
@@ -119,13 +138,20 @@ def _IVT_calc_model_levs(quv_ds_ts):
     """
     Perform IVT calculation on model levels for a single timestep.
     
-    This method (including variable names and calculation of delta-p) works for MERRA-2 only.
-    Will need adapting for any other datasets where IVT is calculated on pressure levels.
+    This method (including variable names and calculation of delta-p) works for
+    MERRA-2 only. Will need adapting for any other datasets where IVT is
+    calculated on pressure levels.
     - Possibly add a dictionary with variable names in the AR_ID_config.hjson   
     """
     
-    uIVT_ts = np.nansum(quv_ds_ts['U']*quv_ds_ts['QV']*quv_ds_ts['DELP'], axis=0)/constants.g
-    vIVT_ts = np.nansum(quv_ds_ts['V']*quv_ds_ts['QV']*quv_ds_ts['DELP'], axis=0)/constants.g
+    uIVT_ts = np.nansum(
+        quv_ds_ts['U']*quv_ds_ts['QV']*quv_ds_ts['DELP'],
+        axis=0
+        ) / constants.g
+    vIVT_ts = np.nansum(
+        quv_ds_ts['V']*quv_ds_ts['QV']*quv_ds_ts['DELP'],
+        axis=0
+        ) / constants.g
     
     IVT_ts = np.sqrt((uIVT_ts**2) + (vIVT_ts**2))
     
@@ -136,8 +162,9 @@ def _IVT_ll_mean_wind_calc_pres_levs(quv_ds_ts):
     Perform IVT and 1000-700 hPa mean wind calculation on pressure levels for
     a single timestep.
     
-    This method (including variable names and calculation of delta-p) works for MERRA-2 only.
-    Will need adapting for any other datasets where IVT is calculated on pressure levels.
+    This method (including variable names and calculation of delta-p) works for
+    MERRA-2 only. Will need adapting for any other datasets where IVT is
+    calculated on pressure levels.
     - Possibly add a dictionary with variable names in the AR_ID_config.hjson   
     """
     
@@ -147,8 +174,14 @@ def _IVT_ll_mean_wind_calc_pres_levs(quv_ds_ts):
     delp = [(plevs[i+1] - plevs[i])*-100 for i in range(len(plevs) - 1)]
     delp.append(5000.0)
 
-    uIVT_ts = np.nansum(quv_ds_ts['U']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis], axis=0)/constants.g
-    vIVT_ts = np.nansum(quv_ds_ts['V']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis], axis=0)/constants.g
+    uIVT_ts = np.nansum(
+        quv_ds_ts['U']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis],
+        axis=0
+        ) / constants.g
+    vIVT_ts = np.nansum(
+        quv_ds_ts['V']*quv_ds_ts['QV']*np.array(delp)[:,np.newaxis,np.newaxis],
+        axis=0
+        ) / constants.g
     
     # Assumes pressure levels are incremented every 25 hPa from 1000 to 700 hPa
     ll_mean_u_wind_ts = np.nanmean(quv_ds_ts['U'][:13], axis=0)

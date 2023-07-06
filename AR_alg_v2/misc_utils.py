@@ -2,6 +2,8 @@
 Miscellaneous utility functions for AR algorithm.
 """
 
+import numpy as np
+
 def rename_coords(ds):
     """
     Make sure latitude and longitude in xarray dataset are named "lat" and "lon",
@@ -10,6 +12,9 @@ def rename_coords(ds):
     (Files obtained from ERA5 have coords named "latitude" and "longitude";
     MERRA-2 files have "lat" and "lon". This may need to be adapted for any
     other data sources.)
+    
+    This function also changes very small (but nonzero) values of lat/lon to
+    a value of 0 (using the helper function _fix_zero_values).
     """
     
     if ('lat' in ds.coords) and ('lon' in ds.coords):
@@ -19,6 +24,25 @@ def rename_coords(ds):
             ds = ds.rename({'latitude':'lat','longitude':'lon'})
         else:
             raise Exception('Unknown lat/lon coordinate names')
+    
+    ds = _fix_zero_values(ds)
+    
+    return ds
+
+
+def _fix_zero_values(ds):
+    """
+    Change very small (but nonzero) values of lat/lon to a value of 0.
+    """
+    
+    lats = ds.lat.data
+    lons = ds.lon.data
+    
+    lats[np.where(np.abs(lats) < 0.0001)] = 0
+    lons[np.where(np.abs(lons) < 0.0001)] = 0
+    
+    ds['lat'] = lats
+    ds['lon'] = lons
     
     return ds
 
