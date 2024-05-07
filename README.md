@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/528946690.svg)](https://zenodo.org/doi/10.5281/zenodo.11128004)
+
 # AR algorithm v2
 
 Code for identifying atmospheric river (AR) outlines by applying size, shape, and transport direction criteria to fields of integrated water vapor transport (IVT) from gridded meteorological analyses.
