@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/528946690.svg)](https://zenodo.org/doi/10.5281/zenodo.11128004)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11128004.svg)](https://zenodo.org/doi/10.5281/zenodo.11128004)
 
 # AR algorithm v2
 
