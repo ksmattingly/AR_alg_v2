@@ -46,9 +46,15 @@ def calc_IVT_from_uvIVT(AR_config, begin_t_str, end_t_str, timestep_hrs_str):
     
     for i, t in enumerate(times):
         # Assumes we are calculating over the full lat/lon grid of the original file
-        uvIVT_ds_ts = uvIVT_ds.sel(time=t)
-        uIVT_ts = uvIVT_ds_ts['p71.162']
-        vIVT_ts = uvIVT_ds_ts['p72.162']
+        try:
+            uvIVT_ds_ts = uvIVT_ds.sel(time=t)
+            uIVT_ts = uvIVT_ds_ts['p71.162']
+            vIVT_ts = uvIVT_ds_ts['p72.162']
+        except KeyError:
+            uvIVT_ds_ts = uvIVT_ds.sel(valid_time=t)
+            uIVT_ts = uvIVT_ds_ts['viwve']
+            vIVT_ts = uvIVT_ds_ts['viwvn']
+
         IVT_ts = np.sqrt((uIVT_ts**2) + (vIVT_ts**2))
         
         uIVT[i,:,:] = uIVT_ts
