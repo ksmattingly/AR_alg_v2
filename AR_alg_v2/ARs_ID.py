@@ -418,7 +418,16 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
     # at the lat/lon coordinates found to be part of actual ARs in the "wrap" array.
     AR_labels_timestep = np.zeros(shape=(u_wrap.shape[0], int(u_wrap.shape[1]/2)))
     
-    AR_count_timestep = 0
+    # Array keeping track of features that span the central longitude
+    # discontinuity in the center of the "double wrap" array and are filtered
+    # out by either the "direction" flags or the "length and shape" flags
+    filtered_features = np.zeros(
+        shape=(u_wrap.shape[0], int(u_wrap.shape[1]/2)))
+    # Indices of the longitudes that span the discontinuity at the center of
+    # the "double wrap" arrays ("left center" and "right center")
+    lon_ix_lc = int(u_wrap.shape[1]/2) - 1
+    lon_ix_rc = int(u_wrap.shape[1]/2) + 1
+
     # Loop through all potential AR features and determine if they meet AR criteria
     for row in feature_props_df.iterrows():
         label = row[1]['label']
@@ -440,6 +449,15 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
         # moisture transport plume (if centered in tropical/subtropical latitudes)
         direction_flags = _check_direction(AR_config, centroid_lat, feature_array, u_wrap, v_wrap)
         if direction_flags > 0:
+            feat_lon_ixs = feature_props.coords[:,1]
+            if (lon_ix_lc in feat_lon_ixs) and (lon_ix_rc in feat_lon_ixs):
+                for ixs in feature_props.coords:
+                    lat_ix = ixs[0]
+                    lon_wrap = lons_wrap[ixs[1]]
+                    lon_ix = np.where(lons==lon_wrap)
+
+                    filtered_features[lat_ix,lon_ix] = 1
+                
             continue
         
         # Test if feature meets length and length-to-width ratio criteria
@@ -447,19 +465,32 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                                                          feature_array, feature_props,
                                                          lats, lons_wrap)
         if length_and_shape_flags > 0:
+            feat_lon_ixs = feature_props.coords[:,1]
+            if (lon_ix_lc in feat_lon_ixs) and (lon_ix_rc in feat_lon_ixs):
+                for ixs in feature_props.coords:
+                    lat_ix = ixs[0]
+                    lon_wrap = lons_wrap[ixs[1]]
+                    lon_ix = np.where(lons==lon_wrap)
+
+                    filtered_features[lat_ix,lon_ix] = 1
+
             continue
         
         # If the feature passes all the tests, check to see if it overlaps with 
-        # a pre-existing AR feature in the AR output array. 
+        # (a) a pre-existing AR feature in the AR output array, or (b) a
+        # feature along the longitude discontinuity in the center of the
+        # "double wrap" array that was previously filtered out.
         # - If there is no pre-existing AR feature in the same location, add the
         #   feature's labeled points to the AR output array.
         # - If there is a pre-existing AR feature in the same location, retain
         #   the label of whichever feature is larger (either the pre-existing
         #   feature or the current feature being inspected). This has the effect
         #   of discarding features that are on the left or right edge of the "wrap"
-        #   array, and retains features that cross the antimeridian in the center
-        #   of the "wrap" array as a single feature with the same label.
-        for ixs in feature_props.coords:            
+        #   array, and retains features that cross the antimeridian or prime meridian
+        #   in the center of the "wrap" array as a single feature with the same label.
+        # - Previously-filtered features are removed after all potential ARs
+        #   are processed for the given timestep.
+        for ixs in feature_props.coords:
             lat_ix = ixs[0]
             lon_wrap = lons_wrap[ixs[1]]
             lon_ix = np.where(lons==lon_wrap)
@@ -474,8 +505,13 @@ def apply_AR_criteria(AR_config, feature_props_df, grid_cell_area_df,
                     break
             else:
                 AR_labels_timestep[lat_ix,lon_ix] = label
+    
+    # Remove non-AR features that span the longitude discontinuity in the
+    # center of the "double wrap" array
+    AR_labels_timestep[np.where(filtered_features > 0)] = 0
 
-        AR_count_timestep += 1
+    # Get the number of final ARs for this timestep
+    AR_count_timestep = len(np.unique(AR_labels_timestep)) - 1
 
     return AR_labels_timestep, AR_count_timestep
 
