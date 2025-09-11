@@ -46,6 +46,9 @@ def ARs_ID(AR_config, begin_time, end_time, timestep_hrs, ens_member):
     end_dt = dt.datetime.strptime(end_time, '%Y-%m-%d_%H%M')
     times = pd.date_range(begin_dt, end_dt, freq=timestep_hrs+'H')
 
+    # Remove leap days from output times (CESM-2 LE data excludes leap days)
+    times = times[~((times.month == 2) & (times.day == 29))]
+
     # Build indexing data frame with input file names, times, and time indices
     ix_df = build_input_file_indexing_df(AR_config, times, ens_member,
                                          ll_mean_wind=False)
