@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11128004.svg)](https://zenodo.org/doi/10.5281/zenodo.11128004)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18226622.svg)](https://zenodo.org/doi/10.5281/zenodo.18226622)
 
 # AR algorithm v2
 
@@ -55,3 +55,4 @@ Kyle Mattingly
 Space Science and Engineering Center  
 University of Wisconsin-Madison  
 [ksmattingly@wisc.edu](mailto:ksmattingly@wisc.edu)
+
